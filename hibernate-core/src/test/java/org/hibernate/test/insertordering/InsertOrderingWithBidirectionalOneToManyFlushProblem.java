@@ -6,9 +6,10 @@
  */
 package org.hibernate.test.insertordering;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import org.hibernate.testing.TestForIssue;
+import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
+import org.junit.Test;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -16,10 +17,9 @@ import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
-
-import org.hibernate.testing.TestForIssue;
-import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static javax.persistence.CascadeType.PERSIST;
 import static javax.persistence.GenerationType.SEQUENCE;
@@ -27,12 +27,12 @@ import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
 import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
 import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
 
-@TestForIssue(jiraKey = "HHH-12074")
 public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 		extends BaseNonConfigCoreFunctionalTestCase {
 
 	@Test
-	public void testBatchingWithFlush() {
+	@TestForIssue(jiraKey = "HHH-12074")
+	public void testBatchingWithFlush1() {
 		doInHibernate(
 			this::sessionFactory,
 			session -> {
@@ -147,6 +147,25 @@ public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 		@SequenceGenerator(
 				name = "ID",
 				sequenceName = "BOTTOM_SEQ"
+		)
+		private Long id;
+
+		@ManyToOne(optional = false)
+		private MiddleEntity middle;
+	}
+
+	@Entity(name = "BottomEntity2")
+	public static class BottomEntity2 {
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "BOTTOM2_SEQ"
 		)
 		private Long id;
 
