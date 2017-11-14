@@ -124,6 +124,55 @@ public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 		);
 	}
 
+	@Test
+	@TestForIssue(jiraKey = "HHH-12086")
+	public void testBatchingWithFlush2() {
+		doInHibernate(
+			this::sessionFactory,
+			session -> {
+				TopEntity top1 = new TopEntity();
+
+				session.persist( top1 );
+
+				// InsertActionSorter#sort is invoked during this flush.
+				//
+				// input: [top1]
+				// output: [top1]
+				session.flush();
+
+				MiddleEntity middle1 = new MiddleEntity();
+
+				middle1.addBottom( new BottomEntity() );
+				middle1.addBottom2( new BottomEntity2() );
+				top1.addMiddle( middle1 );
+				session.persist( middle1 );
+
+				TopEntity top2 = new TopEntity();
+
+				session.persist( top2 );
+
+				MiddleEntity middle2 = new MiddleEntity();
+
+				middle2.addBottom( new BottomEntity() );
+				middle2.addBottom2( new BottomEntity2() );
+				top2.addMiddle( middle2 );
+				session.persist( middle2 );
+
+				session.persist(new TopEntity());
+
+				// InsertActionSorter#sort is invoked during this flush
+				//
+				// input: [middle1,bottom1,top2,middle2,bottom2] output:
+				// [middle1,middle2,bottom1,bottom2,top2]
+				//
+				// This ordering causes a constraint violation during the flush
+				// when the attempt to insert middle2 before top2 is made.
+				//
+				// correct ordering is: [top2,middle1,middle2,bottom1,bottom2]
+			}
+		);
+	}
+
 	@Override
 	protected void addSettings(Map settings) {
 		settings.put( ORDER_INSERTS, "true" );
