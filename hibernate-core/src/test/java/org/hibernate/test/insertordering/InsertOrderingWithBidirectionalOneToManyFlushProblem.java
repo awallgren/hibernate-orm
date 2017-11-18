@@ -6,9 +6,9 @@
  */
 package org.hibernate.test.insertordering;
 
-import org.hibernate.testing.TestForIssue;
-import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -17,9 +17,10 @@ import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+
+import org.hibernate.testing.TestForIssue;
+import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
+import org.junit.Test;
 
 import static javax.persistence.CascadeType.PERSIST;
 import static javax.persistence.GenerationType.SEQUENCE;
@@ -108,21 +109,6 @@ public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 				middle2.addBottom2( new BottomEntity2() );
 				top2.addMiddle( middle2 );
 				session.persist( middle2 );
-
-				session.persist(new TopEntity());
-
-				// InsertActionSorter#sort is invoked during this flush
-				//
-				// input: [middle1,bottom1,top2,middle2,bottom2] output:
-				// [middle1,middle2,bottom1,bottom2,top2]
-				//
-				// This ordering causes a constraint violation during the flush
-				// when the attempt to insert middle2 before top2 is made.
-				//
-				// correct ordering is: [top2,middle1,middle2,bottom1,bottom2]
-			}
-		);
-	}
 
 	@Override
 	protected void addSettings(Map settings) {
