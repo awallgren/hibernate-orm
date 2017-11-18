@@ -6,9 +6,9 @@
  */
 package org.hibernate.test.insertordering;
 
-import org.hibernate.testing.TestForIssue;
-import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -17,9 +17,10 @@ import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.SequenceGenerator;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+
+import org.hibernate.testing.TestForIssue;
+import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
+import org.junit.Test;
 
 import static javax.persistence.CascadeType.PERSIST;
 import static javax.persistence.GenerationType.SEQUENCE;
@@ -109,55 +110,6 @@ public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 				top2.addMiddle( middle2 );
 				session.persist( middle2 );
 				
-				session.persist(new TopEntity());
-
-				// InsertActionSorter#sort is invoked during this flush
-				//
-				// input: [middle1,bottom1,top2,middle2,bottom2] output:
-				// [middle1,middle2,bottom1,bottom2,top2]
-				//
-				// This ordering causes a constraint violation during the flush
-				// when the attempt to insert middle2 before top2 is made.
-				//
-				// correct ordering is: [top2,middle1,middle2,bottom1,bottom2]
-			}
-		);
-	}
-
-	@Test
-	@TestForIssue(jiraKey = "HHH-12086")
-	public void testBatchingWithFlush2() {
-		doInHibernate(
-			this::sessionFactory,
-			session -> {
-				TopEntity top1 = new TopEntity();
-
-				session.persist( top1 );
-
-				// InsertActionSorter#sort is invoked during this flush.
-				//
-				// input: [top1]
-				// output: [top1]
-				session.flush();
-
-				MiddleEntity middle1 = new MiddleEntity();
-
-				middle1.addBottom( new BottomEntity() );
-				middle1.addBottom2( new BottomEntity2() );
-				top1.addMiddle( middle1 );
-				session.persist( middle1 );
-
-				TopEntity top2 = new TopEntity();
-
-				session.persist( top2 );
-
-				MiddleEntity middle2 = new MiddleEntity();
-
-				middle2.addBottom( new BottomEntity() );
-				middle2.addBottom2( new BottomEntity2() );
-				top2.addMiddle( middle2 );
-				session.persist( middle2 );
-
 				session.persist(new TopEntity());
 
 				// InsertActionSorter#sort is invoked during this flush
