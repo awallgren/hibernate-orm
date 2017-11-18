@@ -9,7 +9,6 @@ package org.hibernate.test.insertordering;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -28,12 +27,12 @@ import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
 import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
 import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
 
+@TestForIssue(jiraKey = "HHH-12074")
 public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 		extends BaseNonConfigCoreFunctionalTestCase {
 
 	@Test
-	@TestForIssue(jiraKey = "HHH-12074")
-	public void testBatchingWithFlush1() {
+	public void testBatchingWithFlush() {
 		doInHibernate(
 			this::sessionFactory,
 			session -> {
@@ -109,7 +108,7 @@ public class InsertOrderingWithBidirectionalOneToManyFlushProblem
 				middle2.addBottom2( new BottomEntity2() );
 				top2.addMiddle( middle2 );
 				session.persist( middle2 );
-				
+
 				session.persist(new TopEntity());
 
 				// InsertActionSorter#sort is invoked during this flush
