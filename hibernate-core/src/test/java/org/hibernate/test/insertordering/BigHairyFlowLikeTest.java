@@ -6,7 +6,6 @@
  */
 package org.hibernate.test.insertordering;
 
-import org.hibernate.testing.TestForIssue;
 import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
 import org.junit.Test;
 
@@ -36,7 +35,6 @@ import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
 import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
 import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
 
-@TestForIssue(jiraKey = "HHH-12105")
 public class BigHairyFlowLikeTest
 		extends BaseNonConfigCoreFunctionalTestCase {
 
