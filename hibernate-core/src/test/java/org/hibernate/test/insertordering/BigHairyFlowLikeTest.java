@@ -95,7 +95,7 @@ public class BigHairyFlowLikeTest
 
 	@Override
 	protected void addSettings(Map settings) {
-		settings.put( ORDER_INSERTS, "false" );
+		settings.put( ORDER_INSERTS, "true" );
 		settings.put( STATEMENT_BATCH_SIZE, "10" );
 	}
 
