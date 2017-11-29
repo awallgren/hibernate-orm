@@ -1,3 +1,12 @@
+
+// BigHairyFlowLikeTest.java --
+//
+// BigHairyFlowLikeTest.java is part of ElectricCommander.
+//
+// Copyright (c) 2005-2017 Electric Cloud, Inc.
+// All rights reserved.
+//
+
 /*
  * Hibernate, Relational Persistence for Idiomatic Java
  *
@@ -38,10 +47,11 @@ import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
 public class BigHairyFlowLikeTest
 		extends BaseNonConfigCoreFunctionalTestCase {
 
+	//~ Methods ----------------------------------------------------------------
+
 	@Test
-	public void testInsertSortingWithFlush() {
-		doInHibernate(
-				this::sessionFactory,
+	public void testInsertSortingWithFlush1() {
+		doInHibernate(this::sessionFactory,
 				session -> {
 					Flow flow1 = new Flow();
 					Formal formal1 = new Formal();
@@ -52,32 +62,28 @@ public class BigHairyFlowLikeTest
 
 					flow1.acl = new Acl();
 					flow1.project = project1;
-					flow1.sheet = new Sheet();
-					flow1.sheet.acl = new Acl();
-
+					flow1.propertySheet = new PropertySheet();
+					flow1.propertySheet.acl = new Acl();
 					formal1.acl = new Acl();
-
 					pipeline1.acl = new Acl();
+
 					pipeline1.formals.add(formal1);
 					pipeline1.project = project1;
-					pipeline1.sheet = new Sheet();
-					pipeline1.sheet.acl = new Acl();
-
+					pipeline1.propertySheet = new PropertySheet();
+					pipeline1.propertySheet.acl = new Acl();
 					project1.acl = new Acl();
-					project1.sheet = new Sheet();
-					project1.sheet.acl = new Acl();
-
+					project1.propertySheet = new PropertySheet();
+					project1.propertySheet.acl = new Acl();
 					project2.acl = new Acl();
+
 					project2.acl.addAclEntry(aclEntry);
-					project2.sheet = new Sheet();
-					project2.sheet.acl = new Acl();
+					project2.propertySheet = new PropertySheet();
+					project2.propertySheet.acl = new Acl();
 
 					session.persist(project1);
 					session.flush();
-
-					project1.flows.add( flow1 );
-					project1.pipelines.add( pipeline1 );
-
+					project1.flows.add(flow1);
+					project1.pipelines.add(pipeline1);
 					session.persist(flow1);
 
 					//
@@ -87,16 +93,62 @@ public class BigHairyFlowLikeTest
 					session.persist(pipeline1);
 					session.persist(formal1);
 					session.persist(project2);
-					
 					session.persist(project2);
-				}
-		);
+				});
+	}
+	
+	@Test
+	public void testInsertSortingWithFlush2() {
+		doInHibernate(this::sessionFactory,
+				session -> {
+					Flow flow1 = new Flow();
+					Formal formal1 = new Formal();
+					Pipeline pipeline1 = new Pipeline();
+					Project project1 = new Project();
+					Project project2 = new Project();
+					AclEntry aclEntry = new AclEntry();
+
+					flow1.acl = new Acl();
+					flow1.project = project1;
+					flow1.propertySheet = new PropertySheet();
+					flow1.propertySheet.acl = new Acl();
+					formal1.acl = new Acl();
+					pipeline1.acl = new Acl();
+
+					pipeline1.formals.add(formal1);
+					pipeline1.project = project1;
+					pipeline1.propertySheet = new PropertySheet();
+					pipeline1.propertySheet.acl = new Acl();
+					project1.acl = new Acl();
+					project1.propertySheet = new PropertySheet();
+					project1.propertySheet.acl = new Acl();
+					project2.acl = new Acl();
+
+					project2.acl.addAclEntry(aclEntry);
+					project2.propertySheet = new PropertySheet();
+					project2.propertySheet.acl = new Acl();
+
+					session.persist(project1);
+					session.flush();
+					project1.flows.add(flow1);
+					project1.pipelines.add(pipeline1);
+					session.persist(flow1);
+
+					//
+					flow1.pipeline = pipeline1;
+					pipeline1.flow = flow1;
+
+					session.persist(pipeline1);
+					session.persist(formal1);
+					session.persist(project2);
+					session.persist(project2);
+				});
 	}
 
 	@Override
 	protected void addSettings(Map settings) {
-		settings.put( ORDER_INSERTS, "true" );
-		settings.put( STATEMENT_BATCH_SIZE, "10" );
+		settings.put(ORDER_INSERTS, "true");
+		settings.put(STATEMENT_BATCH_SIZE, "10");
 	}
 
 	@Override
@@ -104,16 +156,157 @@ public class BigHairyFlowLikeTest
 		return new Class[]{
 				Acl.class,
 				AclEntry.class,
+				Application.class,
+				Component.class,
 				Flow.class,
 				Formal.class,
 				Pipeline.class,
+				Process.class,
 				Project.class,
-				Sheet.class,
+				PropertySheet.class,
+				Release.class,
 		};
+	}
+
+	//~ Inner Classes ----------------------------------------------------------
+
+	@Entity(name = "Acl")
+	public static class Acl {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "ACL_SEQ"
+		)
+		private Long id;
+		@OneToMany(
+				cascade = ALL,
+				mappedBy = "acl"
+		)
+		private List<AclEntry> aclEntries = new ArrayList<>();
+
+		//~ Methods ------------------------------------------------------------
+
+		private void addAclEntry(AclEntry aclEntry) {
+			aclEntries.add(aclEntry);
+			aclEntry.acl = this;
+		}
+	}
+
+	@Entity(name = "AclEntry")
+	public static class AclEntry {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "ACL_ENTRY_SEQ"
+		)
+		private Long id;
+		@ManyToOne(optional = false)
+		private Acl acl;
+	}
+
+	@Entity(name = "Application")
+	public static class Application {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "APP_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@JoinColumn(
+				name = "project_id",
+				nullable = false
+		)
+		@ManyToOne(
+				fetch = LAZY,
+				optional = false
+		)
+		private Project m_project;
+		@OneToMany(
+				cascade = ALL,
+				fetch = LAZY,
+				mappedBy = "application",
+				orphanRemoval = true
+		)
+		private List<Process> processes = new ArrayList<>();
+	}
+
+	@Entity(name = "Component")
+	public static class Component {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "COMPONENT_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@ManyToOne(optional = false)
+		private Project project;
+		@OneToMany(
+				cascade = ALL,
+				fetch = LAZY,
+				mappedBy = "component",
+				orphanRemoval = true
+		)
+		private List<Process> processes = new ArrayList<>();
 	}
 
 	@Entity(name = "Flow")
 	public static class Flow {
+
+		//~ Instance fields ----------------------------------------------------
 
 		@Column(nullable = false)
 		@GeneratedValue(
@@ -126,27 +319,28 @@ public class BigHairyFlowLikeTest
 				sequenceName = "FLOW_SEQ"
 		)
 		private Long id;
-
-		@OneToOne(mappedBy = "flow")
-		private Pipeline pipeline;
-
-		@OneToOne(cascade = ALL,
-				optional = false)
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
 		private Acl acl;
-
 		@OneToOne(
 				cascade = ALL,
 				fetch = LAZY,
 				orphanRemoval = true
 		)
-		private Sheet sheet;
-
+		private PropertySheet propertySheet;
 		@ManyToOne(optional = false)
 		private Project project;
+		@OneToOne(mappedBy = "flow")
+		private Pipeline pipeline;
 	}
-	
-	@Entity(name = "AclEntry")
-	public static class AclEntry {
+
+	@Entity(name = "Formal")
+	public static class Formal
+			implements Comparable<Formal> {
+
+		//~ Instance fields ----------------------------------------------------
 
 		@Column(nullable = false)
 		@GeneratedValue(
@@ -156,17 +350,27 @@ public class BigHairyFlowLikeTest
 		@Id
 		@SequenceGenerator(
 				name = "ID",
-				sequenceName = "ACL_ENTRY_SEQ"
+				sequenceName = "FORMAL_SEQ"
 		)
-		private Long           id;
-
-		@ManyToOne(optional = false)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
 		private Acl acl;
+
+		//~ Methods ------------------------------------------------------------
+
+		@Override
+		public int compareTo(Formal o) {
+			return Integer.compare(Objects.hashCode(this), Objects.hashCode(o));
+		}
 	}
 
 	@Entity(name = "Pipeline")
-	public static class Pipeline
-	{
+	public static class Pipeline {
+
+		//~ Instance fields ----------------------------------------------------
 
 		@Column(nullable = false)
 		@GeneratedValue(
@@ -179,17 +383,14 @@ public class BigHairyFlowLikeTest
 				sequenceName = "PIPELINE_SEQ"
 		)
 		private Long id;
-
 		@ManyToOne(optional = false)
 		private Project project;
-
 		@JoinColumn
 		@OneToOne(
 				cascade = ALL,
 				fetch = LAZY
 		)
 		private Flow flow;
-
 		@JoinTable(
 				name = "ec_pipeline_formal_param",
 				joinColumns =
@@ -218,22 +419,23 @@ public class BigHairyFlowLikeTest
 				orphanRemoval = true
 		)
 		private Set<Formal> formals = new TreeSet<>();
-
-		@OneToOne(cascade = ALL,
-				optional = false)
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
 		private Acl acl;
-
 		@OneToOne(
 				cascade = ALL,
 				fetch = LAZY,
 				orphanRemoval = true
 		)
-		private Sheet sheet;
+		private PropertySheet propertySheet;
 	}
 
-	@Entity(name = "Acl")
-	public static class Acl
-	{
+	@Entity(name = "Process")
+	public static class Process {
+
+		//~ Instance fields ----------------------------------------------------
 
 		@Column(nullable = false)
 		@GeneratedValue(
@@ -243,74 +445,31 @@ public class BigHairyFlowLikeTest
 		@Id
 		@SequenceGenerator(
 				name = "ID",
-				sequenceName = "ACL_SEQ"
+				sequenceName = "PROCESS_SEQ"
 		)
 		private Long id;
-
-		@OneToMany(
+		@OneToOne(
 				cascade = ALL,
-				mappedBy = "acl"
+				optional = false
 		)
-		private List<AclEntry> aclEntries = new ArrayList<>();
-
-		private void addAclEntry(AclEntry aclEntry) {
-			aclEntries.add( aclEntry );
-			aclEntry.acl = this;
-		}
-		
-	}
-
-	@Entity(name = "Sheet")
-	public static class Sheet
-	{
-
-		@Column(nullable = false)
-		@GeneratedValue(
-				strategy = SEQUENCE,
-				generator = "ID"
-		)
-		@Id
-		@SequenceGenerator(
-				name = "ID",
-				sequenceName = "SHEET_SEQ"
-		)
-		private Long      id;
-		
-		@OneToOne(cascade = ALL,
-				  optional = false)
 		private Acl acl;
-	}
-
-	@Entity(name = "Formal")
-	public static class Formal
-		implements Comparable<Formal>
-	{
-		
-		@Override
-		public int compareTo(Formal o) {
-			return Integer.compare(Objects.hashCode(this), Objects.hashCode(o));
-		}
-
-		@Column(nullable = false)
-		@GeneratedValue(
-				strategy = SEQUENCE,
-				generator = "ID"
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
 		)
-		@Id
-		@SequenceGenerator(
-				name = "ID",
-				sequenceName = "FORMAL_SEQ"
-		)
-		private Long id;
-
-		@OneToOne(cascade = ALL,
-				  optional = false)
-		private Acl      acl;
+		private PropertySheet propertySheet;
+		@ManyToOne(optional = false)
+		private Project project;
+		@JoinColumn
+		@ManyToOne(fetch = LAZY)
+		private Application application;
 	}
 
 	@Entity(name = "ProjectEntity")
-	public static class Project
-	{
+	public static class Project {
+
+		//~ Instance fields ----------------------------------------------------
 
 		@Column(nullable = false)
 		@GeneratedValue(
@@ -323,30 +482,94 @@ public class BigHairyFlowLikeTest
 				sequenceName = "PROJECT_SEQ"
 		)
 		private Long id;
-
 		@OneToMany(
 				fetch = LAZY,
 				mappedBy = "project",
 				orphanRemoval = true
 		)
 		private List<Pipeline> pipelines = new ArrayList<>();
-
+		@OneToMany(
+				fetch = LAZY,
+				mappedBy = "project",
+				orphanRemoval = true
+		)
+		private List<Application> applications = new ArrayList<>();
 		@OneToMany(
 				fetch = LAZY,
 				mappedBy = "project",
 				orphanRemoval = true
 		)
 		private List<Flow> flows = new ArrayList<>();
-
-		@OneToOne(cascade = ALL,
-				  optional = false)
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
 		private Acl acl;
-
 		@OneToOne(
 				cascade = ALL,
 				fetch = LAZY,
 				orphanRemoval = true
 		)
-		private Sheet sheet;
+		private PropertySheet propertySheet;
+		@OneToMany(
+				fetch = LAZY,
+				mappedBy = "project",
+				orphanRemoval = true
+		)
+		private List<Release> releases = new ArrayList<>();
+	}
+
+	@Entity(name = "PropertySheet")
+	public static class PropertySheet {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "SHEET_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+	}
+
+	@Entity(name = "Release")
+	public static class Release {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "RELEASE_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@ManyToOne(optional = false)
+		private Project project;
 	}
 }
