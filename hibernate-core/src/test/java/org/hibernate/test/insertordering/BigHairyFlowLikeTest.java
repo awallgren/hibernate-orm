@@ -15,6 +15,7 @@
  */
 package org.hibernate.test.insertordering;
 
+import org.hibernate.annotations.LazyCollection;
 import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -41,6 +42,7 @@ import java.util.TreeSet;
 import static javax.persistence.CascadeType.ALL;
 import static javax.persistence.FetchType.LAZY;
 import static javax.persistence.GenerationType.SEQUENCE;
+import static org.hibernate.annotations.LazyCollectionOption.EXTRA;
 import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
 import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
 import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
@@ -144,7 +146,7 @@ public class BigHairyFlowLikeTest
 					session.persist(release);
 				});
 	}
-	
+
 	@Test
 	public void testInsertSortingWithFlush3() {
 		doInHibernate(this::sessionFactory,
@@ -182,7 +184,7 @@ public class BigHairyFlowLikeTest
 					application.processes.add(process1);
 					project1.applications.add(application);
 					project1.releases.add(release);
-					
+
 					//
 					session.persist(project1);
 					session.persist(application);
@@ -211,13 +213,19 @@ public class BigHairyFlowLikeTest
 				AclEntry.class,
 				Application.class,
 				Component.class,
+				Environment.class,
+				EnvironmentTier.class,
 				Flow.class,
+				FlowState.class,
 				Formal.class,
+				Gate.class,
 				Pipeline.class,
 				Process.class,
 				Project.class,
 				PropertySheet.class,
 				Release.class,
+				Service.class,
+				Stage.class
 		};
 	}
 
@@ -356,6 +364,85 @@ public class BigHairyFlowLikeTest
 		private List<Process> processes = new ArrayList<>();
 	}
 
+	@Entity(name = "Environment")
+	public static class Environment {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "ENVIRONMENT_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@ManyToOne(optional = false)
+		private Project project;
+		@JoinColumn(
+				nullable = false,
+				updatable = false
+		)
+		@OneToMany(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private List<EnvironmentTier> environmentTiers;
+	}
+
+	@Entity(name = "EnvironmentTier")
+	public static class EnvironmentTier {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "ENVIRONMENT_TIER_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@JoinColumn(
+				insertable = false,
+				updatable = false
+		)
+		@ManyToOne(
+				fetch = LAZY,
+				optional = false
+		)
+		private Environment environment;
+	}
+
 	@Entity(name = "Flow")
 	public static class Flow {
 
@@ -389,6 +476,45 @@ public class BigHairyFlowLikeTest
 		private Pipeline pipeline;
 	}
 
+	@Entity(name = "FlowState")
+	public static class FlowState {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "FLOW_STATE_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@JoinColumn(
+				insertable = false,
+				nullable = false,
+				updatable = false
+		)
+		@ManyToOne(
+				fetch = LAZY,
+				optional = false
+		)
+		private Flow flow;
+	}
+
 	@Entity(name = "Formal")
 	public static class Formal
 			implements Comparable<Formal> {
@@ -418,6 +544,40 @@ public class BigHairyFlowLikeTest
 		public int compareTo(Formal o) {
 			return Integer.compare(Objects.hashCode(this), Objects.hashCode(o));
 		}
+	}
+
+	@Entity(name = "Gate")
+	public static class Gate {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "GATE_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@JoinColumn
+		@OneToOne
+		private Flow flow;
+		@ManyToOne(optional = false)
+		private Project project;
 	}
 
 	@Entity(name = "Pipeline")
@@ -520,6 +680,9 @@ public class BigHairyFlowLikeTest
 		@JoinColumn
 		@ManyToOne(fetch = LAZY)
 		private Component component;
+		@JoinColumn
+		@ManyToOne
+		private Process process;
 	}
 
 	@Entity(name = "ProjectEntity")
@@ -573,6 +736,14 @@ public class BigHairyFlowLikeTest
 				orphanRemoval = true
 		)
 		private List<Release> releases = new ArrayList<>();
+
+		@LazyCollection(EXTRA)
+		@OneToMany(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private List<Service> services;
 	}
 
 	@Entity(name = "PropertySheet")
@@ -625,6 +796,78 @@ public class BigHairyFlowLikeTest
 				orphanRemoval = true
 		)
 		private PropertySheet propertySheet;
+		@ManyToOne(optional = false)
+		private Project project;
+	}
+
+	@Entity(name = "Service")
+	public static class Service {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "SERVICE_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@ManyToOne(optional = false)
+		private Project project;
+
+		@OneToMany(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private List<Process> processes;
+	}
+
+	@Entity(name = "Stage")
+	public static class Stage {
+
+		//~ Instance fields ----------------------------------------------------
+
+		@Column(nullable = false)
+		@GeneratedValue(
+				strategy = SEQUENCE,
+				generator = "ID"
+		)
+		@Id
+		@SequenceGenerator(
+				name = "ID",
+				sequenceName = "STAGE_SEQ"
+		)
+		private Long id;
+		@OneToOne(
+				cascade = ALL,
+				optional = false
+		)
+		private Acl acl;
+		@OneToOne(
+				cascade = ALL,
+				fetch = LAZY,
+				orphanRemoval = true
+		)
+		private PropertySheet propertySheet;
+		@JoinColumn
+		@OneToOne
+		private Flow flow;
 		@ManyToOne(optional = false)
 		private Project project;
 	}
