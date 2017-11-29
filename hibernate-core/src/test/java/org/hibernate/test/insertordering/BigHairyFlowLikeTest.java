@@ -16,6 +16,7 @@
 package org.hibernate.test.insertordering;
 
 import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 
 import javax.persistence.Column;
@@ -43,7 +44,9 @@ import static javax.persistence.GenerationType.SEQUENCE;
 import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
 import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
 import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
+import static org.junit.runners.MethodSorters.NAME_ASCENDING;
 
+@FixMethodOrder(NAME_ASCENDING)
 public class BigHairyFlowLikeTest
 		extends BaseNonConfigCoreFunctionalTestCase {
 
@@ -96,51 +99,101 @@ public class BigHairyFlowLikeTest
 					session.persist(project2);
 				});
 	}
-	
+
 	@Test
 	public void testInsertSortingWithFlush2() {
 		doInHibernate(this::sessionFactory,
 				session -> {
-					Flow flow1 = new Flow();
-					Formal formal1 = new Formal();
-					Pipeline pipeline1 = new Pipeline();
+					Application application = new Application();
+					Process process1 = new Process();
 					Project project1 = new Project();
-					Project project2 = new Project();
-					AclEntry aclEntry = new AclEntry();
+					Release release = new Release();
 
-					flow1.acl = new Acl();
-					flow1.project = project1;
-					flow1.propertySheet = new PropertySheet();
-					flow1.propertySheet.acl = new Acl();
-					formal1.acl = new Acl();
-					pipeline1.acl = new Acl();
+					release.acl = new Acl();
+					release.propertySheet = new PropertySheet();
+					release.propertySheet.acl = new Acl();
+					release.project = project1;
 
-					pipeline1.formals.add(formal1);
-					pipeline1.project = project1;
-					pipeline1.propertySheet = new PropertySheet();
-					pipeline1.propertySheet.acl = new Acl();
+					//
+					application.acl = new Acl();
+					application.project = project1;
+					application.propertySheet = new PropertySheet();
+					application.propertySheet.acl = new Acl();
+
+					//
+					process1.acl = new Acl();
+					process1.propertySheet = new PropertySheet();
+					process1.propertySheet.acl = new Acl();
+					process1.application = application;
+					process1.project = project1;
+
+					//
 					project1.acl = new Acl();
 					project1.propertySheet = new PropertySheet();
 					project1.propertySheet.acl = new Acl();
-					project2.acl = new Acl();
 
-					project2.acl.addAclEntry(aclEntry);
+					//
+					application.processes.add(process1);
+					project1.applications.add(application);
+					project1.releases.add(release);
+
+					//
+					session.persist(project1);
+					session.persist(application);
+					session.persist(process1);
+					session.persist(release);
+				});
+	}
+	
+	@Test
+	public void testInsertSortingWithFlush3() {
+		doInHibernate(this::sessionFactory,
+				session -> {
+					Application application = new Application();
+					Process process1 = new Process();
+					Project project1 = new Project();
+					Project project2 = new Project();
+					Release release = new Release();
+
+					release.acl = new Acl();
+					release.propertySheet = new PropertySheet();
+					release.propertySheet.acl = new Acl();
+					release.project = project1;
+
+					//
+					application.acl = new Acl();
+					application.project = project1;
+					application.propertySheet = new PropertySheet();
+					application.propertySheet.acl = new Acl();
+
+					//
+					process1.acl = new Acl();
+					process1.propertySheet = new PropertySheet();
+					process1.propertySheet.acl = new Acl();
+					process1.application = application;
+					process1.project = project1;
+
+					//
+					project1.acl = new Acl();
+					project1.propertySheet = new PropertySheet();
+					project1.propertySheet.acl = new Acl();
+
+					//
+					application.processes.add(process1);
+					project1.applications.add(application);
+					project1.releases.add(release);
+					
+					//
+					session.persist(project1);
+					session.persist(application);
+					session.persist(process1);
+					session.persist(release);
+
+					//
+					project2.acl = new Acl();
 					project2.propertySheet = new PropertySheet();
 					project2.propertySheet.acl = new Acl();
 
-					session.persist(project1);
-					session.flush();
-					project1.flows.add(flow1);
-					project1.pipelines.add(pipeline1);
-					session.persist(flow1);
-
-					//
-					flow1.pipeline = pipeline1;
-					pipeline1.flow = flow1;
-
-					session.persist(pipeline1);
-					session.persist(formal1);
-					session.persist(project2);
 					session.persist(project2);
 				});
 	}
@@ -255,7 +308,7 @@ public class BigHairyFlowLikeTest
 				fetch = LAZY,
 				optional = false
 		)
-		private Project m_project;
+		private Project project;
 		@OneToMany(
 				cascade = ALL,
 				fetch = LAZY,
@@ -464,6 +517,9 @@ public class BigHairyFlowLikeTest
 		@JoinColumn
 		@ManyToOne(fetch = LAZY)
 		private Application application;
+		@JoinColumn
+		@ManyToOne(fetch = LAZY)
+		private Component component;
 	}
 
 	@Entity(name = "ProjectEntity")
