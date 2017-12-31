@@ -7,13 +7,6 @@
 apply plugin: 'java'
 apply plugin: 'hibernate-matrix-testing'
 
-//Temporary repository config, until geolatte-geom is released in maven central.
-repositories {
-    maven {
-        url "https://oss.sonatype.org/content/repositories/snapshots/"
-    }
-}
-
 mavenPom {
     name = 'Integrate support for Spatial/GIS data into Hibernate O/RM'
     description = 'Integrate support for Spatial/GIS data into Hibernate O/RM'
@@ -42,8 +35,7 @@ dependencies {
         transitive = true
     }
 
-    testRuntime( libraries.expression_language_api )
-    testRuntime( libraries.expression_language_impl )
+    testRuntime( libraries.expression_language )
 
     testRuntime('jaxen:jaxen:1.1')
     testRuntime(libraries.javassist)

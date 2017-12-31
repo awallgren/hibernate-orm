@@ -40,6 +40,9 @@ dependencies {
 		paxExamVersion = '4.4.0'
 		paxExamUrlVersion = '2.4.1'
 		karafVersion = '3.0.3'
+
+//		paxExamVersion = '4.11.0'
+//		karafVersion = '4.1.2'
 	}
 
 	compile( project( ':hibernate-core' ) )
@@ -174,8 +177,8 @@ karafFeatures {
 			}
 			bundle {
 				match {
-					group = 'org.hibernate.javax.persistence'
-					module = 'hibernate-jpa-2.1-api'
+					group = 'javax.persistence'
+					module = 'javax.persistence-api'
 				}
 				dependency = true
 			}
@@ -238,7 +241,10 @@ karafFeatures {
 			name = 'hibernate-infinispan'
 			description = 'Feature for easily adding Infinispan-based caching support to hibernate-orm'
 			dependencyFeatureNames = ['hibernate-orm']
-			projects = [rootProject.childProjects.'hibernate-infinispan']
+			bundle {
+				match group: 'org.infinispan', module: 'infinispan-hibernate-cache'
+				include = true
+			}
 			bundle {
 				match group: 'org.hibernate', module: 'hibernate-core'
 				include = false

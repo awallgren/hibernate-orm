@@ -29,7 +29,9 @@ import org.hibernate.QueryException;
 import org.hibernate.criterion.CriteriaQuery;
 import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.EnhancedProjection;
+import org.hibernate.criterion.ParameterInfoCollector;
 import org.hibernate.criterion.Projection;
+import org.hibernate.engine.query.spi.OrdinalParameterDescriptor;
 import org.hibernate.engine.spi.QueryParameters;
 import org.hibernate.engine.spi.RowSelection;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -183,8 +185,8 @@ public class CriteriaQueryTranslator implements CriteriaQuery {
 			String testAlias = StringHelper.root( path );
 			if ( !testAlias.equals( subcriteria.getAlias() ) ) {
 				// and the qualifier is not the alias of this criteria
-				//      -> check to see if we belong to some criteria other
-				//          than the one that created us
+				// -> check to see if we belong to some criteria other
+				//  than the one that created us
 				parent = aliasCriteriaMap.get( testAlias );
 			}
 		}
@@ -311,6 +313,7 @@ public class CriteriaQueryTranslator implements CriteriaQuery {
 
 		final List<Object> values = new ArrayList<Object>();
 		final List<Type> types = new ArrayList<Type>();
+
 		final Iterator<CriteriaImpl.Subcriteria> subcriteriaIterator = rootCriteria.iterateSubcriteria();
 		while ( subcriteriaIterator.hasNext() ) {
 			final CriteriaImpl.Subcriteria subcriteria = subcriteriaIterator.next();

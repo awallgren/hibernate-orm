@@ -52,6 +52,8 @@ import org.hibernate.hql.spi.id.MultiTableBulkIdStrategy;
 import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.internal.log.DeprecationLogger;
 import org.hibernate.internal.util.config.ConfigurationHelper;
+import org.hibernate.jpa.JpaCompliance;
+import org.hibernate.jpa.spi.JpaComplianceImpl;
 import org.hibernate.loader.BatchFetchStyle;
 import org.hibernate.proxy.EntityNotFoundDelegate;
 import org.hibernate.query.criteria.LiteralHandlingMode;
@@ -64,7 +66,62 @@ import org.hibernate.tuple.entity.EntityTuplizerFactory;
 
 import org.jboss.logging.Logger;
 
-import static org.hibernate.cfg.AvailableSettings.*;
+import static org.hibernate.cfg.AvailableSettings.ACQUIRE_CONNECTIONS;
+import static org.hibernate.cfg.AvailableSettings.ALLOW_JTA_TRANSACTION_ACCESS;
+import static org.hibernate.cfg.AvailableSettings.ALLOW_REFRESH_DETACHED_ENTITY;
+import static org.hibernate.cfg.AvailableSettings.ALLOW_UPDATE_OUTSIDE_TRANSACTION;
+import static org.hibernate.cfg.AvailableSettings.AUTO_CLOSE_SESSION;
+import static org.hibernate.cfg.AvailableSettings.AUTO_EVICT_COLLECTION_CACHE;
+import static org.hibernate.cfg.AvailableSettings.AUTO_SESSION_EVENTS_LISTENER;
+import static org.hibernate.cfg.AvailableSettings.BATCH_FETCH_STYLE;
+import static org.hibernate.cfg.AvailableSettings.BATCH_VERSIONED_DATA;
+import static org.hibernate.cfg.AvailableSettings.CACHE_REGION_PREFIX;
+import static org.hibernate.cfg.AvailableSettings.CHECK_NULLABILITY;
+import static org.hibernate.cfg.AvailableSettings.COLLECTION_JOIN_SUBQUERY;
+import static org.hibernate.cfg.AvailableSettings.CONNECTION_HANDLING;
+import static org.hibernate.cfg.AvailableSettings.CONVENTIONAL_JAVA_CONSTANTS;
+import static org.hibernate.cfg.AvailableSettings.CRITERIA_LITERAL_HANDLING_MODE;
+import static org.hibernate.cfg.AvailableSettings.CUSTOM_ENTITY_DIRTINESS_STRATEGY;
+import static org.hibernate.cfg.AvailableSettings.DEFAULT_BATCH_FETCH_SIZE;
+import static org.hibernate.cfg.AvailableSettings.DEFAULT_ENTITY_MODE;
+import static org.hibernate.cfg.AvailableSettings.ENABLE_LAZY_LOAD_NO_TRANS;
+import static org.hibernate.cfg.AvailableSettings.FAIL_ON_PAGINATION_OVER_COLLECTION_FETCH;
+import static org.hibernate.cfg.AvailableSettings.FLUSH_BEFORE_COMPLETION;
+import static org.hibernate.cfg.AvailableSettings.GENERATE_STATISTICS;
+import static org.hibernate.cfg.AvailableSettings.HQL_BULK_ID_STRATEGY;
+import static org.hibernate.cfg.AvailableSettings.INTERCEPTOR;
+import static org.hibernate.cfg.AvailableSettings.JDBC_TIME_ZONE;
+import static org.hibernate.cfg.AvailableSettings.JDBC_TYLE_PARAMS_ZERO_BASE;
+import static org.hibernate.cfg.AvailableSettings.JPAQL_STRICT_COMPLIANCE;
+import static org.hibernate.cfg.AvailableSettings.JTA_TRACK_BY_THREAD;
+import static org.hibernate.cfg.AvailableSettings.LOG_SESSION_METRICS;
+import static org.hibernate.cfg.AvailableSettings.MAX_FETCH_DEPTH;
+import static org.hibernate.cfg.AvailableSettings.MULTI_TENANT_IDENTIFIER_RESOLVER;
+import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
+import static org.hibernate.cfg.AvailableSettings.ORDER_UPDATES;
+import static org.hibernate.cfg.AvailableSettings.PREFER_USER_TRANSACTION;
+import static org.hibernate.cfg.AvailableSettings.PROCEDURE_NULL_PARAM_PASSING;
+import static org.hibernate.cfg.AvailableSettings.QUERY_CACHE_FACTORY;
+import static org.hibernate.cfg.AvailableSettings.QUERY_STARTUP_CHECKING;
+import static org.hibernate.cfg.AvailableSettings.QUERY_SUBSTITUTIONS;
+import static org.hibernate.cfg.AvailableSettings.RELEASE_CONNECTIONS;
+import static org.hibernate.cfg.AvailableSettings.SESSION_FACTORY_NAME;
+import static org.hibernate.cfg.AvailableSettings.SESSION_FACTORY_NAME_IS_JNDI;
+import static org.hibernate.cfg.AvailableSettings.SESSION_SCOPED_INTERCEPTOR;
+import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
+import static org.hibernate.cfg.AvailableSettings.STATEMENT_FETCH_SIZE;
+import static org.hibernate.cfg.AvailableSettings.STATEMENT_INSPECTOR;
+import static org.hibernate.cfg.AvailableSettings.USE_DIRECT_REFERENCE_CACHE_ENTRIES;
+import static org.hibernate.cfg.AvailableSettings.USE_GET_GENERATED_KEYS;
+import static org.hibernate.cfg.AvailableSettings.USE_IDENTIFIER_ROLLBACK;
+import static org.hibernate.cfg.AvailableSettings.USE_MINIMAL_PUTS;
+import static org.hibernate.cfg.AvailableSettings.USE_QUERY_CACHE;
+import static org.hibernate.cfg.AvailableSettings.USE_SCROLLABLE_RESULTSET;
+import static org.hibernate.cfg.AvailableSettings.USE_SECOND_LEVEL_CACHE;
+import static org.hibernate.cfg.AvailableSettings.USE_SQL_COMMENTS;
+import static org.hibernate.cfg.AvailableSettings.USE_STRUCTURED_CACHE;
+import static org.hibernate.cfg.AvailableSettings.VALIDATE_QUERY_PARAMETERS;
+import static org.hibernate.cfg.AvailableSettings.WRAP_RESULT_SETS;
 import static org.hibernate.engine.config.spi.StandardConverters.BOOLEAN;
 import static org.hibernate.jpa.AvailableSettings.DISCARD_PC_ON_CLOSE;
 
@@ -449,6 +506,30 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	}
 
 	@Override
+	public SessionFactoryBuilder enableJpaQueryCompliance(boolean enabled) {
+		this.options.jpaCompliance.setQueryCompliance( enabled );
+		return this;
+	}
+
+	@Override
+	public SessionFactoryBuilder enableJpaTransactionCompliance(boolean enabled) {
+		this.options.jpaCompliance.setTransactionCompliance( enabled );
+		return this;
+	}
+
+	@Override
+	public SessionFactoryBuilder enableJpaListCompliance(boolean enabled) {
+		this.options.jpaCompliance.setListCompliance( enabled );
+		return this;
+	}
+
+	@Override
+	public SessionFactoryBuilder enableJpaClosedCompliance(boolean enabled) {
+		this.options.jpaCompliance.setClosedCompliance( enabled );
+		return this;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends SessionFactoryBuilder> T unwrap(Class<T> type) {
 		return (T) this;
@@ -473,6 +554,10 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public void disableJtaTransactionAccess() {
 		this.options.jtaTransactionAccessEnabled = false;
+	}
+
+	public void enableJdbcStyleParamsZeroBased() {
+		this.options.jdbcStyleParamsZeroBased = true;
 	}
 
 	@Override
@@ -547,6 +632,7 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private boolean conventionalJavaConstants;
 		private final boolean procedureParameterNullPassingEnabled;
 		private final boolean collectionJoinSubqueryRewriteEnabled;
+		private boolean jdbcStyleParamsZeroBased;
 
 		// Caching
 		private boolean secondLevelCacheEnabled;
@@ -576,6 +662,10 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private LiteralHandlingMode criteriaLiteralHandlingMode;
 
 		private Map<String, SQLFunction> sqlFunctions;
+
+		private JpaComplianceImpl jpaCompliance;
+
+		private boolean failOnPaginationOverCollectionFetchEnabled;
 
 		public SessionFactoryOptionsStateStandardImpl(StandardServiceRegistry serviceRegistry) {
 			this.serviceRegistry = serviceRegistry;
@@ -790,6 +880,21 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 			this.criteriaLiteralHandlingMode = LiteralHandlingMode.interpret(
 				configurationSettings.get( CRITERIA_LITERAL_HANDLING_MODE )
 			);
+
+			this.jdbcStyleParamsZeroBased = ConfigurationHelper.getBoolean(
+					JDBC_TYLE_PARAMS_ZERO_BASE,
+					configurationSettings,
+					false
+			);
+
+			// added the boolean parameter in case we want to define some form of "all" as discussed
+			this.jpaCompliance = new JpaComplianceImpl( configurationSettings, false );
+
+			this.failOnPaginationOverCollectionFetchEnabled = ConfigurationHelper.getBoolean(
+					FAIL_ON_PAGINATION_OVER_COLLECTION_FETCH,
+					configurationSettings,
+					false
+			);
 		}
 
 		private static Interceptor determineInterceptor(Map configurationSettings, StrategySelector strategySelector) {
@@ -930,6 +1035,7 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		public boolean isAllowOutOfTransactionUpdateOperations() {
 			return allowOutOfTransactionUpdateOperations;
 		}
+
 
 		@Override
 		public boolean isReleaseResourcesOnCloseEnabled() {
@@ -1243,16 +1349,32 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		public LiteralHandlingMode getCriteriaLiteralHandlingMode() {
 			return this.criteriaLiteralHandlingMode;
 		}
+
+		@Override
+		public boolean jdbcStyleParamsZeroBased() {
+			return this.jdbcStyleParamsZeroBased;
+		}
+
+		@Override
+		public boolean isFailOnPaginationOverCollectionFetchEnabled() {
+			return this.failOnPaginationOverCollectionFetchEnabled;
+		}
+
+		@Override
+		public JpaCompliance getJpaCompliance() {
+			return jpaCompliance;
+		}
 	}
 
 	private static Supplier<? extends Interceptor> interceptorSupplier(Class<? extends Interceptor> clazz) {
 		return () -> {
-            try {
-                return clazz.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new HibernateException( "Could not supply session-scoped SessionFactory Interceptor", e );
-            }
-        };
+			try {
+				return clazz.newInstance();
+			}
+			catch (InstantiationException | IllegalAccessException e) {
+				throw new HibernateException( "Could not supply session-scoped SessionFactory Interceptor", e );
+			}
+		};
 	}
 
 	@Override
@@ -1281,6 +1403,11 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public boolean isReleaseResourcesOnCloseEnabled(){
 		return options.releaseResourcesOnCloseEnabled;
+	}
+
+	@Override
+	public JpaCompliance getJpaCompliance() {
+		return options.jpaCompliance;
 	}
 
 	@Override
@@ -1590,5 +1717,15 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public LiteralHandlingMode getCriteriaLiteralHandlingMode() {
 		return options.getCriteriaLiteralHandlingMode();
+	}
+
+	@Override
+	public boolean jdbcStyleParamsZeroBased() {
+		return options.jdbcStyleParamsZeroBased();
+	}
+
+	@Override
+	public boolean isFailOnPaginationOverCollectionFetchEnabled() {
+		return options.isFailOnPaginationOverCollectionFetchEnabled();
 	}
 }
