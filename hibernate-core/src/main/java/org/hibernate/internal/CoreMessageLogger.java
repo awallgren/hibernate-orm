@@ -1433,10 +1433,6 @@ public interface CoreMessageLogger extends BasicLogger {
 	@Message(value = "Using java.io streams to persist binary types", id = 407)
 	void usingStreams();
 
-	@LogMessage(level = INFO)
-	@Message(value = "Using workaround for JVM bug in java.sql.Timestamp", id = 408)
-	void usingTimestampWorkaround();
-
 	@LogMessage(level = WARN)
 	@Message(value = "Using %s which does not generate IETF RFC 4122 compliant UUID values; consider using %s instead",
 			id = 409)
@@ -1772,7 +1768,7 @@ public interface CoreMessageLogger extends BasicLogger {
 	void unknownJavaTypeNoEqualsHashCode(Class javaType);
 
 	@LogMessage(level = WARN)
-	@Message(value = "@javax.persistence.Cacheable or @org.hibernate.annotations.Cache used on a non-root entity: ignored for %s", id = 482)
+	@Message(value = "@org.hibernate.annotations.Cache used on a non-root entity: ignored for %s", id = 482)
 	void cacheOrCacheableAnnotationOnNonRoot(String className);
 
 	@LogMessage(level = WARN)

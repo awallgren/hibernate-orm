@@ -58,8 +58,8 @@ allprojects {
 }
 
 ext {
-	hibernateTargetVersion = '5.2.13-SNAPSHOT'
-	expectedGradleVersion = '4.2'
+	hibernateTargetVersion = '5.3.0-SNAPSHOT'
+	expectedGradleVersion = '4.4'
 	baselineJavaVersion = '1.8'
 
     osgiExportVersion = hibernateTargetVersion.replaceAll( '-SNAPSHOT', '.SNAPSHOT' )
@@ -109,15 +109,15 @@ subprojects { subProject ->
     // minimize changes, at least for now (gradle uses 'build' by default)..
     buildDir = "target"
 
-	if ( subProject.name.startsWith( 'release' ) || subProject.name.startsWith( 'documentation' ) ) {
-		return;
+	if ( subProject.name.startsWith( 'release' ) ) {
+		return
 	}
 
 	if ( subProject.name.startsWith( 'hibernate-orm-modules' ) ) {
-		return;
+		return
 	}
 
-	// everything below here in the closure applies to java projects
+	// everything below here in the closure applies to modules with Java code
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'
 	apply plugin: 'maven-publish-auth'
@@ -127,6 +127,8 @@ subprojects { subProject ->
 	apply plugin: 'checkstyle'
 	apply plugin: 'build-dashboard'
 	apply plugin: 'project-report'
+
+	apply from: "${rootProject.projectDir}/utilities.gradle"
 
 	apply plugin: org.hibernate.build.HibernateBuildPlugin
 
@@ -143,6 +145,9 @@ subprojects { subProject ->
 		}
 		configurations {
 			all*.exclude group: 'xml-apis', module: 'xml-apis'
+		}
+		asciidoclet {
+			description = "Dependencies for Asciidoctor Javadoc taglet"
 		}
 	}
 
@@ -172,6 +177,8 @@ subprojects { subProject ->
 		testRuntime( libraries.mariadb )
 		testRuntime( libraries.mssql )
 		testRuntime( libraries.informix )
+
+		asciidoclet 'org.asciidoctor:asciidoclet:1.+'
 
 		if (db.equalsIgnoreCase("oracle")) {
 			dependencies {
@@ -323,36 +330,117 @@ subprojects { subProject ->
 			}
 			classpath = configurations.runtime
 
-			instruction 'Import-Package',
-				// Temporarily support JTA 1.1 -- Karaf and other frameworks still
-				// use it.  Without this, the plugin generates [1.2,2).
-				'javax.transaction;version="[1.1,2)"',
-				// Tell Gradle OSGi to still dynamically import the other packages.
-				// IMPORTANT: Do not include the * in the modules' .gradle files.
-				// If it exists more than once, the manifest will physically contain a *.
-				'*'
 
-			instruction 'Bundle-Vendor', 'Hibernate.org'
-			instruction 'Bundle-Description', subProject.osgiDescription()
-			instruction 'Implementation-Url', 'http://hibernate.org'
-			instruction 'Implementation-Version', version
-			instruction 'Implementation-Vendor', 'Hibernate.org'
-			instruction 'Implementation-Vendor-Id', 'org.hibernate'
-			instruction 'Implementation-Title', name
+			String moduleSimpleName = java9ModuleName( subProject )
+			String moduleName = "org.hibernate.orm.$moduleSimpleName"
+
+			// Java 9 module name
+			instruction 'Automatic-Module-Name', moduleName
+
+			// the OSGi metadata
+			symbolicName moduleName
+			vendor 'Hibernate.org'
+			description subProject.osgiDescription()
+			docURL "http://www.hibernate.org/orm/${hibernateMajorMinorVersion}"
+
+			instruction 'Import-Package',
+						// Temporarily support JTA 1.1 -- Karaf and other frameworks still
+						// use it.  Without this, the plugin generates [1.2,2).
+						'javax.transaction;version="[1.1,2)"',
+						// Tell Gradle OSGi to still dynamically import the other packages.
+						// IMPORTANT: Do not include the * in the modules' .gradle files.
+						// If it exists more than once, the manifest will physically contain a *.
+						'*'
+
+			// Basic JAR manifest metadata
 			instruction 'Specification-Title', name
 			instruction 'Specification-Version', version
 			instruction 'Specification-Vendor', 'Hibernate.org'
+			instruction 'Implementation-Title', name
+			instruction 'Implementation-Version', version
+			instruction 'Implementation-VersionFamily', hibernateMajorMinorVersion
+			instruction 'Implementation-Vendor', 'Hibernate.org'
+			instruction 'Implementation-Vendor-Id', 'org.hibernate'
+			instruction 'Implementation-Url', 'http://hibernate.org/orm'
+
 		}
 	}
 
 	task sourcesJar(type: Jar, dependsOn: compileJava) {
 		from sourceSets.main.allSource
+		manifest = jar.manifest
 		classifier = 'sources'
 	}
 
-	sourcesJar {
-		manifest = jar.manifest
+	javadoc {
+		exclude( "**/internal/*" )
+		exclude( "**/generated-src/**" )
+
+		final int currentYear = new GregorianCalendar().get( Calendar.YEAR )
+
+		configure( options ) {
+			docletpath = configurations.asciidoclet.files.asType(List)
+			doclet = 'org.asciidoctor.Asciidoclet'
+
+			windowTitle = "$subProject.name JavaDocs"
+			docTitle = "$subProject.name JavaDocs ($project.version)"
+			bottom = "Copyright &copy; 2001-$currentYear <a href=\"http://redhat.com\">Red Hat, Inc.</a>  All Rights Reserved."
+			use = true
+			encoding = 'UTF-8'
+			links += [
+					'http://docs.oracle.com/javase/8/docs/api/',
+					'http://docs.jboss.org/hibernate/beanvalidation/spec/2.0/api/',
+					'http://docs.jboss.org/cdi/api/2.0/',
+					'http://docs.oracle.com/javaee/7/api/'
+			]
+
+			if ( JavaVersion.current().isJava8Compatible() ) {
+				options.addStringOption( 'Xdoclint:none', '-quiet' )
+			}
+
+			doFirst {
+				// calculation of these groups is expensive - so push
+				// that process from init/configuration phase to execution
+				// phase.
+				//
+				// Note : this does not affect UP-TO-DATE checking because
+				// the groups are based on packages of the classes, and
+				// if the classes change that would already trigger
+				// re-execution of this task...
+
+				Set<String> apiPackages = new HashSet<>()
+				Set<String> spiPackages = new HashSet<>()
+				Set<String> testingPackages = new HashSet<String>()
+
+				subProject.sourceSets.main.java.each { javaFile ->
+					final String packageName = determinePackageName( subProject.sourceSets.main.java, javaFile );
+					if ( packageName.endsWith( ".internal" ) || packageName.contains( ".internal." ) ) {
+						// nothing to do - we exclude internal packages
+					}
+					else if ( packageName.endsWith( ".spi" ) || packageName.contains( ".spi." ) ) {
+						spiPackages.add( packageName )
+					}
+					else if ( packageName.startsWith( "org.hibernate.testing" ) ) {
+						testingPackages += packageName
+					}
+					else {
+						apiPackages.add( packageName )
+					}
+				}
+
+				options.group( 'API', apiPackages.asList() )
+				options.group( 'SPI', spiPackages.asList() )
+				options.group( 'Testing Support', testingPackages.asList() )
+
+			}
+		}
 	}
+
+	task javadocJar(type: Jar, dependsOn: javadoc) {
+		from tasks.javadoc.outputs
+		classifier = 'javadoc'
+	}
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -455,28 +543,35 @@ subprojects { subProject ->
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Publishing
-	publishing {
-		publications {
-			mavenJava(MavenPublication) {
-				from components.java
+	if ( !subProject.name.equals( 'documentation' ) && !subProject.name.equals( 'hibernate-infinispan' ) ) {
+		// do not configure publishing for the documentation module
+		publishing {
+			publications {
+				mavenJava(MavenPublication) {
+					from components.java
 
-				artifact( sourcesJar ) {
-					classifier 'sources'
+					artifact( sourcesJar ) {
+						classifier 'sources'
+					}
+
+					artifact(javadocJar) {
+						classifier "javadoc"
+					}
 				}
+				// http://issues.gradle.org/browse/GRADLE-2966
+				// Once ^^ is resolved:
+				//		1) Move hibernate-testing module into hibernate-core tests
+				//		2) Define a second publication on hibernate-core for publishing the testing jar
+				// We could kind of do this now, but it would just be the jar.  Every module would still need
+				// to duplicate the testing dependencies.  Well, on second thought, we could centralize the
+				// testing dependencies here within the subprojects block
 			}
-			// http://issues.gradle.org/browse/GRADLE-2966
-			// Once ^^ is resolved:
-			//		1) Move hibernate-testing module into hibernate-core tests
-			//		2) Define a second publication on hibernate-core for publishing the testing jar
-			// We could kind of do this now, but it would just be the jar.  Every module would still need
-			// to duplicate the testing dependencies.  Well, on second thought, we could centralize the
-			// testing dependencies here within the subprojects block
 		}
-	}
 
-	model {
-		tasks.generatePomFileForMavenJavaPublication {
-			destination = file( "$subProject.buildDir/generated-pom.xml" )
+		model {
+			tasks.generatePomFileForMavenJavaPublication {
+				destination = file( "$subProject.buildDir/generated-pom.xml" )
+			}
 		}
 	}
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -386,7 +386,7 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 				integrator.disintegrate( this, serviceRegistry );
 				integratorObserver.integrators.remove( integrator );
 			}
-			serviceRegistry.destroy();
+			close();
 			throw e;
 		}
 	}
@@ -566,11 +566,13 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 
 	@Override
 	public Session createEntityManager() {
+		validateNotClosed();
 		return buildEntityManager( SynchronizationType.SYNCHRONIZED, Collections.emptyMap() );
 	}
 
 	private Session buildEntityManager(SynchronizationType synchronizationType, Map map) {
-		validateNotClosed();
+		assert !isClosed;
+
 		SessionBuilderImplementor builder = withOptions();
 		if ( synchronizationType == SynchronizationType.SYNCHRONIZED ) {
 			builder.autoJoinTransactions( true );
@@ -592,11 +594,13 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 
 	@Override
 	public Session createEntityManager(Map map) {
+		validateNotClosed();
 		return buildEntityManager( SynchronizationType.SYNCHRONIZED, map );
 	}
 
 	@Override
 	public Session createEntityManager(SynchronizationType synchronizationType) {
+		validateNotClosed();
 		errorIfResourceLocalDueToExplicitSynchronizationType();
 		return buildEntityManager( synchronizationType, Collections.emptyMap() );
 	}
@@ -615,6 +619,7 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 
 	@Override
 	public Session createEntityManager(SynchronizationType synchronizationType, Map map) {
+		validateNotClosed();
 		errorIfResourceLocalDueToExplicitSynchronizationType();
 		return buildEntityManager( synchronizationType, map );
 	}
@@ -627,6 +632,7 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 
 	@Override
 	public MetamodelImplementor getMetamodel() {
+		validateNotClosed();
 		return metamodel;
 	}
 
@@ -734,6 +740,10 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 	 */
 	public void close() throws HibernateException {
 		if ( isClosed ) {
+			if ( getSessionFactoryOptions().getJpaCompliance().isJpaClosedComplianceEnabled() ) {
+				throw new IllegalStateException( "EntityManagerFactory is already closed" );
+			}
+
 			LOG.trace( "Already closed" );
 			return;
 		}
@@ -745,10 +755,20 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 
 		settings.getMultiTableBulkIdStrategy().release( serviceRegistry.getService( JdbcServices.class ), buildLocalConnectionAccess() );
 
-		cacheAccess.close();
-		metamodel.close();
+		// NOTE : the null checks below handle cases where close is called from
+		//		a failed attempt to create the SessionFactory
 
-		queryPlanCache.cleanup();
+		if ( cacheAccess != null ) {
+			cacheAccess.close();
+		}
+
+		if ( metamodel != null ) {
+			metamodel.close();
+		}
+
+		if ( queryPlanCache != null ) {
+			queryPlanCache.cleanup();
+		}
 
 		if ( delayedDropAction != null ) {
 			delayedDropAction.perform( serviceRegistry );

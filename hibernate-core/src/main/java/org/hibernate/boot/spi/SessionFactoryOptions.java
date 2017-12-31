@@ -23,6 +23,7 @@ import org.hibernate.cfg.BaselineSessionEventsListenerBuilder;
 import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
 import org.hibernate.dialect.function.SQLFunction;
 import org.hibernate.hql.spi.id.MultiTableBulkIdStrategy;
+import org.hibernate.jpa.JpaCompliance;
 import org.hibernate.loader.BatchFetchStyle;
 import org.hibernate.proxy.EntityNotFoundDelegate;
 import org.hibernate.query.criteria.LiteralHandlingMode;
@@ -117,7 +118,8 @@ public interface SessionFactoryOptions {
 		return () -> {
 			try {
 				return getStatelessInterceptorImplementor().newInstance();
-			} catch (InstantiationException | IllegalAccessException e) {
+			}
+			catch (InstantiationException | IllegalAccessException e) {
 				throw new HibernateException( "Could not supply session-scoped SessionFactory Interceptor", e );
 			}
 		};
@@ -247,4 +249,10 @@ public interface SessionFactoryOptions {
 	default LiteralHandlingMode getCriteriaLiteralHandlingMode() {
 		return LiteralHandlingMode.AUTO;
 	}
+
+	boolean jdbcStyleParamsZeroBased();
+
+	JpaCompliance getJpaCompliance();
+
+	boolean isFailOnPaginationOverCollectionFetchEnabled();
 }
