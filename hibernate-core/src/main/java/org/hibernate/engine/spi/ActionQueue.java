@@ -1194,13 +1194,13 @@ public class ActionQueue {
 					if ( batchIdentifier.hasAnyChildEntityNames( nextBatchIdentifier ) ) {
 						nextBatchIdentifier.parent = batchIdentifier;
 						nextBatchIdentifier.getParentEntityNames().add( batchIdentifier.getEntityName() );
-					}
+					}	
 				}
 			}
 
 			boolean sorted = false;
 
-			long maxIterations = latestBatches.size() * latestBatches.size();
+			long maxIterations =  latestBatches.size() * latestBatches.size() * latestBatches.size() * 10;
 			long iterations = 0;
 
 			sort:
