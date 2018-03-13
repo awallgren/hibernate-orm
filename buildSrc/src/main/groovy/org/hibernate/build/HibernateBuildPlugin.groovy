@@ -85,6 +85,19 @@ class HibernateBuildPlugin implements Plugin<Project> {
 					url 'https://repository.jboss.org/nexus/service/local/staging/deploy/maven2/'
 				}
 			}
+
+			if ( project.version.endsWith( 'SNAPSHOT' ) ) {
+				gradlePublishingExtension.repositories.maven {
+					name 'EcArtifactory'
+					url 'http://artifactory.electric-cloud.com/thirdparty'
+				}
+			}
+			else {
+				gradlePublishingExtension.repositories.maven {
+					name 'EcArtifactory'
+					url 'http://artifactory.electric-cloud.com/thirdparty'
+				}
+			}
 		}
 
 		// pom
