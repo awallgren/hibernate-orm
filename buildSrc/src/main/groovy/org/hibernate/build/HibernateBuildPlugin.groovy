@@ -89,13 +89,13 @@ class HibernateBuildPlugin implements Plugin<Project> {
 			if ( project.version.endsWith( 'SNAPSHOT' ) ) {
 				gradlePublishingExtension.repositories.maven {
 					name 'EcArtifactory'
-					url 'http://artifactory.electric-cloud.com/thirdparty'
+					url 'http://artifactory.electric-cloud.com/artifactory/thirdparty'
 				}
 			}
 			else {
 				gradlePublishingExtension.repositories.maven {
 					name 'EcArtifactory'
-					url 'http://artifactory.electric-cloud.com/thirdparty'
+					url 'http://artifactory.electric-cloud.com/artifactory/thirdparty'
 				}
 			}
 		}
