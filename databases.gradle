@@ -59,7 +59,7 @@ ext {
                         'jdbc.url'   : 'jdbc:mysql://127.0.0.1/hibernate_orm_test'
                 ],
                 mariadb : [
-                        'db.dialect' : 'org.hibernate.dialect.MariaDB53Dialect',
+                        'db.dialect' : 'org.hibernate.dialect.MariaDB102Dialect',
                         'jdbc.driver': 'org.mariadb.jdbc.Driver',
                         'jdbc.user'  : 'hibernate_orm_test',
                         'jdbc.pass'  : 'hibernate_orm_test',
@@ -106,6 +106,13 @@ ext {
                         'jdbc.user'  : 'HIBERNATE_TEST',
                         'jdbc.pass'  : 'H1bernate_test',
                         'jdbc.url'   : 'jdbc:sap://localhost:30015/'
+                ],
+                hana_vlad : [
+                        'db.dialect' : 'org.hibernate.dialect.HANAColumnStoreDialect',
+                        'jdbc.driver': 'com.sap.db.jdbc.Driver',
+                        'jdbc.user'  : 'VLAD',
+                        'jdbc.pass'  : 'V1ad_test',
+                        'jdbc.url'   : 'jdbc:sap://localhost:39015/'
                 ]
         ]
 }
