@@ -1114,6 +1114,7 @@ public class ActionQueue {
 				return (
 					parent == batchIdentifier
 					|| ( parentEntityNames.contains( batchIdentifier.getEntityName() ) )
+					|| ( parentEntityNames.contains( batchIdentifier.getRootEntityName() ) )
 					|| parent != null && parent.hasParent( batchIdentifier, new ArrayList<>() )
 				);
 			}
@@ -1126,6 +1127,7 @@ public class ActionQueue {
 				return (
 					parent == batchIdentifier
 					|| parentEntityNames.contains( batchIdentifier.getEntityName() )
+					|| parentEntityNames.contains( batchIdentifier.getRootEntityName() )
 				);
 			}
 		}
