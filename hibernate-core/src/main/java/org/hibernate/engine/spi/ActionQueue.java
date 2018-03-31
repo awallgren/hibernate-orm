@@ -21,6 +21,8 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
@@ -1131,6 +1133,8 @@ public class ActionQueue {
 		public InsertActionSorter() {
 		}
 
+		private static final AtomicInteger COUNTER = new AtomicInteger();
+		
 		/**
 		 * Sort the insert actions.
 		 */
@@ -1139,6 +1143,10 @@ public class ActionQueue {
 			this.latestBatches = new ArrayList<>( );
 			this.entityBatchIdentifier = new HashMap<>( insertions.size() + 1, 1.0f );
 			this.actionBatches = new HashMap<>();
+			int pass = COUNTER.incrementAndGet();
+			ActionQueue.LOG.debug("ORDER_INSERTS pass #" + pass + " input: " + insertions.size() + " insertions " + (String)insertions.stream().map((actionx) -> {
+				return String.format("%-30s : %36s", actionx.getEntityName().substring(actionx.getEntityName().lastIndexOf(".") + 1), actionx.getId());
+			}).collect(Collectors.joining("\n", "\n", "")));
 
 			for ( AbstractEntityInsertAction action : insertions ) {
 				BatchIdentifier batchIdentifier = new BatchIdentifier(
@@ -1194,7 +1202,7 @@ public class ActionQueue {
 
 			boolean sorted = false;
 
-			long maxIterations = latestBatches.size() * latestBatches.size();
+			long maxIterations = latestBatches.size() * latestBatches.size() * 2;
 			long iterations = 0;
 
 			sort:
@@ -1206,11 +1214,11 @@ public class ActionQueue {
 				for ( int i = 0; i < latestBatches.size(); i++ ) {
 					BatchIdentifier batchIdentifier = latestBatches.get( i );
 
-					// Iterate next batches and make sure that children types are after parents.
-					// Since the outer loop looks at each batch entry individually and the prior loop will reorder
-					// entries as well, we need to look and verify if the current batch is a child of the next
-					// batch or if the current batch is seen as a parent or child of the next batch.
-					for ( int j = i + 1; j < latestBatches.size(); j++ ) {
+					// Iterate next batches (starting with longest jumps) and make sure that children types are after
+					// parents. Since the outer loop looks at each batch entry individually and the prior loop will
+					// reorder entries as well, we need to look and verify if the current batch is a child of the later
+					// batch or if the current batch is seen as a parent or child of the later batch.
+					for ( int j = latestBatches.size() - 1; j > i ; j-- ) {
 						BatchIdentifier nextBatchIdentifier = latestBatches.get( j );
 
 						if ( batchIdentifier.hasParent( nextBatchIdentifier ) && !nextBatchIdentifier.hasParent( batchIdentifier ) ) {
@@ -1229,12 +1237,23 @@ public class ActionQueue {
 				LOG.warn( "The batch containing " + latestBatches.size() + " statements could not be sorted after " + maxIterations + " iterations. " +
 								"This might indicate a circular entity relationship." );
 			}
+			else {
+				LOG.info( "Sorting the batch containing " + latestBatches.size() + " statements took " + iterations + " iterations." ); // TODO drop to debug or trace
+			}
+
+			ActionQueue.LOG.debug("ORDER_INSERTS pass #" + pass + " sorted batches: " + (String)this.latestBatches.stream().map((batchx) -> {
+				return batchx.getEntityName().substring(batchx.getEntityName().lastIndexOf(".") + 1);
+			}).collect(Collectors.joining("\n", "\n", "")));
 
 			// Now, rebuild the insertions list. There is a batch for each entry in the name list.
 			for ( BatchIdentifier rootIdentifier : latestBatches ) {
 				List<AbstractEntityInsertAction> batch = actionBatches.get( rootIdentifier );
 				insertions.addAll( batch );
 			}
+
+			ActionQueue.LOG.debug("ORDER_INSERTS pass #" + pass + " output: " + insertions.size() + " insertions " + (String)insertions.stream().map((actionx) -> {
+				return String.format("%-30s : %36s", actionx.getEntityName().substring(actionx.getEntityName().lastIndexOf(".") + 1), actionx.getId());
+			}).collect(Collectors.joining("\n", "\n", "")));
 		}
 
 		/**
