@@ -1127,6 +1127,7 @@ public class ActionQueue {
 				return (
 					parent == batchIdentifier
 					|| parentEntityNames.contains( batchIdentifier.getEntityName() )
+					|| parentEntityNames.contains( batchIdentifier.getRootEntityName() )
 				);
 			}
 		}
