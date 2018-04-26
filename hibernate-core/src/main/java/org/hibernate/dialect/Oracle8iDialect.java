@@ -124,6 +124,7 @@ public class Oracle8iDialect extends Dialect {
 	 */
 	public Oracle8iDialect() {
 		super();
+		registerKeyword( "PASSWORD" );
 		registerCharacterTypeMappings();
 		registerNumericTypeMappings();
 		registerDateTimeTypeMappings();
