@@ -37,6 +37,7 @@ import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.boot.spi.SessionFactoryBuilderImplementor;
 import org.hibernate.boot.spi.SessionFactoryOptions;
+import org.hibernate.cache.internal.NoCachingRegionFactory;
 import org.hibernate.cache.internal.StandardQueryCacheFactory;
 import org.hibernate.cache.spi.QueryCacheFactory;
 import org.hibernate.cache.spi.RegionFactory;
@@ -582,6 +583,8 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private boolean jpaProxyComplianceEnabled;
 		private ImmutableEntityUpdateQueryHandlingMode immutableEntityUpdateQueryHandlingMode;
 
+		private boolean inClauseParameterPaddingEnabled;
+
 		public SessionFactoryOptionsStateStandardImpl(StandardServiceRegistry serviceRegistry) {
 			this.serviceRegistry = serviceRegistry;
 
@@ -684,25 +687,42 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 			this.procedureParameterNullPassingEnabled = cfgService.getSetting( PROCEDURE_NULL_PARAM_PASSING, BOOLEAN, false );
 			this.collectionJoinSubqueryRewriteEnabled = cfgService.getSetting( COLLECTION_JOIN_SUBQUERY, BOOLEAN, true );
 
-			this.secondLevelCacheEnabled = cfgService.getSetting( USE_SECOND_LEVEL_CACHE, BOOLEAN, true );
-			this.queryCacheEnabled = cfgService.getSetting( USE_QUERY_CACHE, BOOLEAN, false );
-			this.queryCacheFactory = strategySelector.resolveDefaultableStrategy(
-					QueryCacheFactory.class,
-					configurationSettings.get( QUERY_CACHE_FACTORY ),
-					StandardQueryCacheFactory.INSTANCE
-			);
-			this.cacheRegionPrefix = ConfigurationHelper.extractPropertyValue(
-					CACHE_REGION_PREFIX,
-					configurationSettings
-			);
-			this.minimalPutsEnabled = cfgService.getSetting(
-					USE_MINIMAL_PUTS,
-					BOOLEAN,
-					serviceRegistry.getService( RegionFactory.class ).isMinimalPutsEnabledByDefault()
-			);
-			this.structuredCacheEntriesEnabled = cfgService.getSetting( USE_STRUCTURED_CACHE, BOOLEAN, false );
-			this.directReferenceCacheEntriesEnabled = cfgService.getSetting( USE_DIRECT_REFERENCE_CACHE_ENTRIES,BOOLEAN, false );
-			this.autoEvictCollectionCache = cfgService.getSetting( AUTO_EVICT_COLLECTION_CACHE, BOOLEAN, false );
+			final RegionFactory regionFactory = serviceRegistry.getService( RegionFactory.class );
+			if ( !NoCachingRegionFactory.class.isInstance( regionFactory ) ) {
+				this.secondLevelCacheEnabled = cfgService.getSetting( USE_SECOND_LEVEL_CACHE, BOOLEAN, true );
+				this.queryCacheEnabled = cfgService.getSetting( USE_QUERY_CACHE, BOOLEAN, false );
+				this.queryCacheFactory = strategySelector.resolveDefaultableStrategy(
+						QueryCacheFactory.class,
+						configurationSettings.get( QUERY_CACHE_FACTORY ),
+						StandardQueryCacheFactory.INSTANCE
+				);
+				this.cacheRegionPrefix = ConfigurationHelper.extractPropertyValue(
+						CACHE_REGION_PREFIX,
+						configurationSettings
+				);
+				this.minimalPutsEnabled = cfgService.getSetting(
+						USE_MINIMAL_PUTS,
+						BOOLEAN,
+						regionFactory.isMinimalPutsEnabledByDefault()
+				);
+				this.structuredCacheEntriesEnabled = cfgService.getSetting( USE_STRUCTURED_CACHE, BOOLEAN, false );
+				this.directReferenceCacheEntriesEnabled = cfgService.getSetting(
+						USE_DIRECT_REFERENCE_CACHE_ENTRIES,
+						BOOLEAN,
+						false
+				);
+				this.autoEvictCollectionCache = cfgService.getSetting( AUTO_EVICT_COLLECTION_CACHE, BOOLEAN, false );
+			}
+			else {
+				this.secondLevelCacheEnabled = false;
+				this.queryCacheEnabled = false;
+				this.queryCacheFactory = null;
+				this.cacheRegionPrefix = null;
+				this.minimalPutsEnabled = false;
+				this.structuredCacheEntriesEnabled = false;
+				this.directReferenceCacheEntriesEnabled = false;
+				this.autoEvictCollectionCache = false;
+			}
 
 			try {
 				this.schemaAutoTooling = SchemaAutoTooling.interpret( (String) configurationSettings.get( AvailableSettings.HBM2DDL_AUTO ) );
@@ -810,6 +830,12 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 
 			this.immutableEntityUpdateQueryHandlingMode = ImmutableEntityUpdateQueryHandlingMode.interpret(
 				configurationSettings.get( IMMUTABLE_ENTITY_UPDATE_QUERY_HANDLING_MODE )
+			);
+
+			this.inClauseParameterPaddingEnabled =  ConfigurationHelper.getBoolean(
+				IN_CLAUSE_PARAMETER_PADDING,
+				configurationSettings,
+				false
 			);
 		}
 
@@ -1279,6 +1305,11 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		public ImmutableEntityUpdateQueryHandlingMode getImmutableEntityUpdateQueryHandlingMode() {
 			return immutableEntityUpdateQueryHandlingMode;
 		}
+
+		@Override
+		public boolean inClauseParameterPaddingEnabled() {
+			return this.inClauseParameterPaddingEnabled;
+		}
 	}
 
 	private static Supplier<? extends Interceptor> interceptorSupplier(Class<? extends Interceptor> clazz) {
@@ -1642,5 +1673,10 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public ImmutableEntityUpdateQueryHandlingMode getImmutableEntityUpdateQueryHandlingMode() {
 		return options.getImmutableEntityUpdateQueryHandlingMode();
+	}
+
+	@Override
+	public boolean inClauseParameterPaddingEnabled() {
+		return options.inClauseParameterPaddingEnabled();
 	}
 }
