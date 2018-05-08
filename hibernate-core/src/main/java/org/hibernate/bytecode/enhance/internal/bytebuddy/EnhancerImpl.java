@@ -94,23 +94,23 @@ public class EnhancerImpl implements Enhancer {
 	 */
 	@Override
 	public synchronized byte[] enhance(String className, byte[] originalBytes) throws EnhancementException {
+		//Classpool#describe does not accept '/' in the description name as it expects a class name. See HHH-12545
+		final String safeClassName = className.replace( '/', '.' );
 		try {
-			final TypeDescription managedCtClass = classPool.describe( className ).resolve();
+			final TypeDescription managedCtClass = classPool.describe( safeClassName ).resolve();
 			DynamicType.Builder<?> builder = doEnhance(
-					new ByteBuddy().ignore( isDefaultFinalizer() ).with( TypeValidation.DISABLED ).redefine( managedCtClass, ClassFileLocator.Simple.of( className, originalBytes ) ),
+					new ByteBuddy().ignore( isDefaultFinalizer() ).with( TypeValidation.DISABLED ).redefine( managedCtClass, ClassFileLocator.Simple.of( safeClassName, originalBytes ) ),
 					managedCtClass
 			);
 			if ( builder == null ) {
-				return null;
+				return originalBytes;
 			}
 			else {
 				return builder.make().getBytes();
 			}
 		}
 		catch (RuntimeException e) {
-			e.printStackTrace();
-			log.unableToBuildEnhancementMetamodel( className );
-			return null;
+			throw new EnhancementException( "Failed to enhance class " + className, e );
 		}
 	}
 
