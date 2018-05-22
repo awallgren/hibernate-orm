@@ -62,7 +62,7 @@ import org.hibernate.type.Type;
  *
  * The ActionQueue holds the DML operations queued as part of a session's transactional-write-behind semantics. The
  * DML operations are queued here until a flush forces them to be executed against the database.
- * 
+ *
  * @author Steve Ebersole
  * @author Gail Badner
  * @author Anton Marsden
@@ -92,7 +92,7 @@ public class ActionQueue {
 	private ExecutableList<CollectionUpdateAction> collectionUpdates;
 	private ExecutableList<QueuedOperationCollectionAction> collectionQueuedOps;
 	private ExecutableList<CollectionRemoveAction> collectionRemovals;
-	
+
 	// TODO: The removeOrphan concept is a temporary "hack" for HHH-6484.  This should be removed once action/task
 	// ordering is improved.
 	private ExecutableList<OrphanRemovalAction> orphanRemovals;
@@ -222,7 +222,7 @@ public class ActionQueue {
 
 	/**
 	 * Constructs an action queue bound to the given session.
-	 * 
+	 *
 	 * @param session The session "owning" this queue.
 	 */
 	public ActionQueue(SessionImplementor session) {
@@ -411,7 +411,7 @@ public class ActionQueue {
 
 	/**
 	 * Are there unresolved entity insert actions that depend on non-nullable associations with a transient entity?
-	 * 
+	 *
 	 * @return true, if there are unresolved entity insert actions that depend on non-nullable associations with a
 	 * transient entity; false, otherwise
 	 */
@@ -423,7 +423,7 @@ public class ActionQueue {
 	 * Throws {@link org.hibernate.PropertyValueException} if there are any unresolved entity insert actions that depend
 	 * on non-nullable associations with a transient entity. This method should be called on completion of an operation
 	 * (after all cascades are completed) that saves an entity.
-	 * 
+	 *
 	 * @throws org.hibernate.PropertyValueException if there are any unresolved entity insert actions;
 	 * {@link org.hibernate.PropertyValueException#getEntityName()} and
 	 * {@link org.hibernate.PropertyValueException#getPropertyName()} will return the entity name and property value for
@@ -451,7 +451,7 @@ public class ActionQueue {
 
 	/**
 	 * Perform all currently queued entity-insertion actions.
-	 * 
+	 *
 	 * @throws HibernateException error executing queued insertion actions.
 	 */
 	public void executeInserts() throws HibernateException {
@@ -462,7 +462,7 @@ public class ActionQueue {
 
 	/**
 	 * Perform all currently queued actions.
-	 * 
+	 *
 	 * @throws HibernateException error executing queued actions.
 	 */
 	public void executeActions() throws HibernateException {
@@ -480,7 +480,7 @@ public class ActionQueue {
 
 	/**
 	 * Prepares the internal action queues for execution.
-	 * 
+	 *
 	 * @throws HibernateException error preparing actions.
 	 */
 	public void prepareActions() throws HibernateException {
@@ -501,7 +501,7 @@ public class ActionQueue {
 
 	/**
 	 * Performs cleanup of any held cache softlocks.
-	 * 
+	 *
 	 * @param success Was the transaction successful.
 	 */
 	public void afterTransactionCompletion(boolean success) {
@@ -536,7 +536,7 @@ public class ActionQueue {
 
 	/**
 	 * Check whether the given tables/query-spaces are to be executed against given the currently queued actions.
-	 * 
+	 *
 	 * @param tables The table/query-spaces to check.
 	 *
 	 * @return {@code true} if we contain pending actions against any of the given tables; {@code false} otherwise.
@@ -587,7 +587,7 @@ public class ActionQueue {
 
 	/**
 	 * Perform {@link org.hibernate.action.spi.Executable#execute()} on each element of the list
-	 * 
+	 *
 	 * @param list The list of Executable elements to be performed
 	 *
 	 * @throws HibernateException
@@ -645,7 +645,7 @@ public class ActionQueue {
 
 	/**
 	 * This method is now called once per execution of an ExecutableList or once for execution of an Execution.
-	 * 
+	 *
 	 * @param spaces The spaces to invalidate
 	 */
 	private void invalidateSpaces(Serializable... spaces) {
@@ -663,7 +663,7 @@ public class ActionQueue {
 
 	/**
 	 * Returns a string representation of the object.
-	 * 
+	 *
 	 * @return a string representation of the object.
 	 */
 	@Override
@@ -852,7 +852,7 @@ public class ActionQueue {
 
 	/**
 	 * Used by the owning session to explicitly control serialization of the action queue
-	 * 
+	 *
 	 * @param oos The stream to which the action queue should get written
 	 * @throws IOException Indicates an error writing to the stream
 	 */
@@ -877,7 +877,7 @@ public class ActionQueue {
 
 	/**
 	 * Used by the owning session to explicitly control deserialization of the action queue.
-	 * 
+	 *
 	 * @param ois The stream from which to read the action queue
 	 * @param session The session to which the action queue belongs
 	 * @return The deserialized action queue
@@ -1019,7 +1019,7 @@ public class ActionQueue {
 	 * Sorts the insert actions using more hashes.
 	 * </p>
 	 * NOTE: this class is not thread-safe.
-	 * 
+	 *
 	 * @author Jay Erb
 	 */
 	private static class InsertActionSorter implements ExecutableList.Sorter<AbstractEntityInsertAction> {
@@ -1260,7 +1260,7 @@ public class ActionQueue {
 
 		/**
 		 * Add parent and child entity names so that we know how to rearrange dependencies
-		 * 
+		 *
 		 * @param action The action being sorted
 		 * @param batchIdentifier The batch identifier of the entity affected by the action
 		 */
@@ -1285,7 +1285,9 @@ public class ActionQueue {
 				final String rootEntityName = action.getSession().getFactory().getMetamodel().entityPersister( entityName ).getRootEntityName();
 
 				if ( entityType.isOneToOne() && OneToOneType.class.cast( entityType ).getForeignKeyDirection() == ForeignKeyDirection.TO_PARENT ) {
-					batchIdentifier.getChildEntityNames().add( entityName );
+					if ( !entityType.isReferenceToPrimaryKey() ) {
+						batchIdentifier.getChildEntityNames().add( entityName );
+					}
 					if ( !rootEntityName.equals( entityName ) ) {
 						batchIdentifier.getChildEntityNames().add( rootEntityName );
 					}
