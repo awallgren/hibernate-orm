@@ -13,6 +13,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 import javax.persistence.Transient;
 
@@ -22,6 +23,7 @@ import org.hibernate.PropertyNotFoundException;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.internal.util.collections.ConcurrentReferenceHashMap;
 import org.hibernate.property.access.internal.PropertyAccessStrategyMixedImpl;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.type.PrimitiveType;
@@ -47,6 +49,12 @@ public final class ReflectHelper {
 
 	private static final Method OBJECT_EQUALS;
 	private static final Method OBJECT_HASHCODE;
+
+	private static final Map<Object[], Method> METHOD_CACHE = new ConcurrentReferenceHashMap<>(
+			10,
+			ConcurrentReferenceHashMap.ReferenceType.SOFT,
+			ConcurrentReferenceHashMap.ReferenceType.SOFT
+	);
 
 	static {
 		Method eq;
@@ -353,6 +361,19 @@ public final class ReflectHelper {
 		catch (Exception e) {
 			return null;
 		}
+	}
+
+	public static Method getMethod(Class clazz, String methodName, Class[] parameterTypes) throws NoSuchMethodException {
+		// Use a cache for speed -- reflection is slow and we can do this often
+		final Object[] key = new Object[] { clazz, methodName, parameterTypes };
+		Method value = METHOD_CACHE.get( key );
+		if ( value == null ) {
+			value = clazz.getMethod( methodName, parameterTypes );
+			// It's ok if two methods are generated concurrently
+			METHOD_CACHE.put( key, value );
+		}
+
+		return value;
 	}
 
 	public static Field findField(Class containerClass, String propertyName) {

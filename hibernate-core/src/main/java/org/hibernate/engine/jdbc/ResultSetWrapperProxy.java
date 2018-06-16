@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
 import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.service.ServiceRegistry;
 
 import static org.hibernate.internal.CoreLogging.messageLogger;
@@ -134,7 +135,9 @@ public class ResultSetWrapperProxy implements InvocationHandler {
 				1,
 				columnNameMethod.getParameterCount() - 1
 		);
-		return columnNameMethod.getDeclaringClass().getMethod( columnNameMethod.getName(), actualParameterTypes );
+		// Use a reflection helper method that caches the results for speed -- we do this often, with many repeats
+		return ReflectHelper.getMethod( columnNameMethod.getDeclaringClass(), columnNameMethod.getName(),
+				actualParameterTypes );
 	}
 
 	private Object[] buildColumnIndexMethodArgs(Object[] incomingArgs, Integer columnIndex) {
