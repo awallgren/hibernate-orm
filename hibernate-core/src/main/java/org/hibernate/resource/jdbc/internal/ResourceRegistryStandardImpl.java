@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,10 +65,11 @@ public class ResourceRegistryStandardImpl implements ResourceRegistry {
 	@Override
 	public void register(Statement statement, boolean cancelable) {
 		log.tracef( "Registering statement [%s]", statement );
-		if ( xref.containsKey( statement ) ) {
+		Set<ResultSet> already = xref.put( statement, Collections.EMPTY_SET );
+		if ( already != null ) {
+			xref.put( statement, already );
 			throw new HibernateException( "JDBC Statement already registered" );
 		}
-		xref.put( statement, null );
 
 		if ( cancelable ) {
 			lastQuery = statement;
@@ -78,18 +80,15 @@ public class ResourceRegistryStandardImpl implements ResourceRegistry {
 	public void release(Statement statement) {
 		log.tracev( "Releasing statement [{0}]", statement );
 
-		// Keep this at DEBUG level, rather than warn.  Numerous connection pool implementations can return a
-		// proxy/wrapper around the JDBC Statement, causing excessive logging here.  See HHH-8210.
-		if ( log.isDebugEnabled() && !xref.containsKey( statement ) ) {
+		final Set<ResultSet> resultSets = xref.get( statement );
+		if ( resultSets != null ) {
+			closeAll( resultSets );
+		} else if ( log.isDebugEnabled() ) {
+			// Keep this at DEBUG level, rather than warn.  Numerous connection pool implementations can return a
+			// proxy/wrapper around the JDBC Statement, causing excessive logging here.  See HHH-8210.
 			log.unregisteredStatement();
 		}
-		else {
-			final Set<ResultSet> resultSets = xref.get( statement );
-			if ( resultSets != null ) {
-				closeAll( resultSets );
-			}
-			xref.remove( statement );
-		}
+		xref.remove( statement );
 		close( statement );
 
 		if ( lastQuery == statement ) {
@@ -201,13 +200,16 @@ public class ResourceRegistryStandardImpl implements ResourceRegistry {
 			}
 		}
 		if ( statement != null ) {
-			// Keep this at DEBUG level, rather than warn.  Numerous connection pool implementations can return a
-			// proxy/wrapper around the JDBC Statement, causing excessive logging here.  See HHH-8210.
-			if ( log.isDebugEnabled() && !xref.containsKey( statement ) ) {
-				log.debug( "ResultSet statement was not registered (on register)" );
-			}
 			Set<ResultSet> resultSets = xref.get( statement );
 			if ( resultSets == null ) {
+				// Keep this at DEBUG level, rather than warn.  Numerous connection pool implementations can return a
+				// proxy/wrapper around the JDBC Statement, causing excessive logging here.  See HHH-8210.
+				if ( log.isDebugEnabled() ) {
+					log.debug( "ResultSet statement was not registered (on register)" );
+				}
+				resultSets = Collections.EMPTY_SET;
+			}
+			if ( resultSets == Collections.EMPTY_SET ) {
 				resultSets = new HashSet<ResultSet>();
 				xref.put( statement, resultSets );
 			}
