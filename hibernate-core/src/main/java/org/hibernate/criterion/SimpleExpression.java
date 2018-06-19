@@ -73,8 +73,9 @@ public class SimpleExpression implements Criterion {
 		final SessionFactoryImplementor factory = criteriaQuery.getFactory();
 		final int[] sqlTypes = type.sqlTypes( factory );
 		for ( int i = 0; i < columns.length; i++ ) {
-			final boolean lower = ignoreCase && (sqlTypes[i] == Types.VARCHAR || sqlTypes[i] == Types.CHAR || 
-					sqlTypes[i] == Types.NVARCHAR || sqlTypes[i] == Types.NCHAR);
+			final boolean lower = ignoreCase && !factory.getDialect().areStringComparisonsCaseInsensitive() &&
+					(sqlTypes[i] == Types.VARCHAR || sqlTypes[i] == Types.CHAR || sqlTypes[i] == Types.NVARCHAR ||
+					sqlTypes[i] == Types.NCHAR);
 			if ( lower ) {
 				fragment.append( factory.getDialect().getLowercaseFunction() ).append( '(' );
 			}
@@ -96,7 +97,9 @@ public class SimpleExpression implements Criterion {
 
 	@Override
 	public TypedValue[] getTypedValues(Criteria criteria, CriteriaQuery criteriaQuery) throws HibernateException {
-		final Object casedValue = ignoreCase ? value.toString().toLowerCase(Locale.ROOT) : value;
+		final Object casedValue = ( ignoreCase &&
+				!criteriaQuery.getFactory().getDialect().areStringComparisonsCaseInsensitive() ) ?
+				value.toString().toLowerCase(Locale.ROOT) : value;
 		return new TypedValue[] { criteriaQuery.getTypedValue( criteria, propertyName, casedValue ) };
 	}
 
