@@ -365,7 +365,15 @@ public final class ReflectHelper {
 
 	public static Method getMethod(Class clazz, String methodName, Class[] parameterTypes) throws NoSuchMethodException {
 		// Use a cache for speed -- reflection is slow and we can do this often
-		final Object[] key = new Object[] { clazz, methodName, parameterTypes };
+
+		// Build a consistent key
+		final String[] key = new String[2 + parameterTypes.length];
+		key[0] = clazz.getName();
+		key[1] = methodName;
+		int i = 1;
+		for (Class parameterType : parameterTypes) {
+			key[i++] = parameterType.getName();
+		}
 		Method value = METHOD_CACHE.get( key );
 		if ( value == null ) {
 			value = clazz.getMethod( methodName, parameterTypes );
