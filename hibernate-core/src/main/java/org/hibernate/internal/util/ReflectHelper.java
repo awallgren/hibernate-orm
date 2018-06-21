@@ -50,7 +50,7 @@ public final class ReflectHelper {
 	private static final Method OBJECT_EQUALS;
 	private static final Method OBJECT_HASHCODE;
 
-	private static final Map<Object[], Method> METHOD_CACHE = new ConcurrentReferenceHashMap<>(
+	private static final Map<String, Method> METHOD_CACHE = new ConcurrentReferenceHashMap<>(
 			10,
 			ConcurrentReferenceHashMap.ReferenceType.SOFT,
 			ConcurrentReferenceHashMap.ReferenceType.SOFT
@@ -367,13 +367,14 @@ public final class ReflectHelper {
 		// Use a cache for speed -- reflection is slow and we can do this often
 
 		// Build a consistent key
-		final String[] key = new String[2 + parameterTypes.length];
-		key[0] = clazz.getName();
-		key[1] = methodName;
-		int i = 1;
+		StringBuilder keyBuilder = new StringBuilder();
+		keyBuilder.append(clazz.getName()).append(' ');
+		keyBuilder.append(methodName);
+		int i = 2;
 		for (Class parameterType : parameterTypes) {
-			key[i++] = parameterType.getName();
+			keyBuilder.append(' ').append(parameterType.getName());
 		}
+		final String key = keyBuilder.toString();
 		Method value = METHOD_CACHE.get( key );
 		if ( value == null ) {
 			value = clazz.getMethod( methodName, parameterTypes );
