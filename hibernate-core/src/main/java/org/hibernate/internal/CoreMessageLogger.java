@@ -1181,7 +1181,7 @@ public interface CoreMessageLogger extends BasicLogger {
 	@Message(value = "JDBC commit failed", id = 345)
 	String unableToPerformJdbcCommit();
 
-	@LogMessage(level = ERROR)
+	@LogMessage(level = INFO)
 	@Message(value = "Error during managed flush [%s]", id = 346)
 	void unableToPerformManagedFlush(String message);
 
