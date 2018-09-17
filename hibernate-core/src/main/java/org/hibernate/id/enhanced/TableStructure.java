@@ -145,7 +145,7 @@ public class TableStructure implements DatabaseStructure {
 										selectRS.close();
 									}
 									catch (SQLException sqle) {
-										LOG.error( "could not read a hi value", sqle );
+										LOG.info( "could not read a hi value", sqle );
 										throw sqle;
 									}
 
