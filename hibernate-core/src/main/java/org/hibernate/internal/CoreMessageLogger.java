@@ -1792,4 +1792,19 @@ public interface CoreMessageLogger extends BasicLogger {
 			id = 487)
 	void immutableEntityUpdateQuery(String sourceQuery, String querySpaces);
 
+	@LogMessage(level = WARN)
+	@Message(value = "Attempt to merge an uninitialized collection with queued operations; queued operations will be ignored: %s", id = 494)
+	void ignoreQueuedOperationsOnMerge(String collectionInfoString);
+
+	@LogMessage(level = WARN)
+	@Message(value = "Attaching an uninitialized collection with queued operations to a session: %s", id = 495)
+	void queuedOperationWhenAttachToSession(String collectionInfoString);
+
+	@LogMessage(level = INFO)
+	@Message(value = "Detaching an uninitialized collection with queued operations from a session: %s", id = 496)
+	void queuedOperationWhenDetachFromSession(String collectionInfoString);
+
+	@LogMessage(level = DEBUG)
+	@Message(value = "Detaching an uninitialized collection with queued operations from a session due to rollback: %s", id = 498)
+	void queuedOperationWhenDetachFromSessionOnRollback(String collectionInfoString);
 }

@@ -38,6 +38,7 @@ import org.hibernate.internal.util.collections.IdentitySet;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
+import org.hibernate.resource.transaction.spi.TransactionStatus;
 import org.hibernate.type.CompositeType;
 import org.hibernate.type.IntegerType;
 import org.hibernate.type.LongType;
@@ -497,6 +498,7 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 		for ( DelayedOperation operation : operationQueue ) {
 			operation.operate();
 		}
+		clearOperationQueue();
 	}
 
 	@Override
@@ -508,9 +510,13 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 
 	@Override
 	public void postAction() {
-		operationQueue = null;
+		clearOperationQueue();
 		cachedSize = -1;
 		clearDirty();
+	}
+
+	public final void clearOperationQueue() {
+		operationQueue = null;
 	}
 
 	@Override
@@ -534,9 +540,8 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 	public boolean afterInitialize() {
 		setInitialized();
 		//do this bit after setting initialized to true or it will recurse
-		if ( operationQueue != null ) {
+		if ( hasQueuedOperations() ) {
 			performQueuedOperations();
-			operationQueue = null;
 			cachedSize = -1;
 			return false;
 		}
@@ -605,6 +610,33 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 		prepareForPossibleLoadingOutsideTransaction();
 		if ( currentSession == this.session ) {
 			if ( !isTempSession ) {
+				if ( hasQueuedOperations() ) {
+					final String collectionInfoString = MessageHelper.collectionInfoString( getRole(), getKey() );
+					try {
+						final TransactionStatus transactionStatus =
+								session.getTransactionCoordinator().getTransactionDriverControl().getStatus();
+						if ( transactionStatus.isOneOf(
+								TransactionStatus.ROLLED_BACK,
+								TransactionStatus.MARKED_ROLLBACK,
+								TransactionStatus.FAILED_COMMIT,
+								TransactionStatus.FAILED_ROLLBACK,
+								TransactionStatus.ROLLING_BACK
+						) ) {
+							// It was due to a rollback.
+							LOG.queuedOperationWhenDetachFromSessionOnRollback( collectionInfoString );
+						}
+						else {
+							// We don't know why the collection is being detached.
+							// Just log the info.
+							LOG.queuedOperationWhenDetachFromSession( collectionInfoString );
+						}
+					}
+					catch (Exception e) {
+						// We don't know why the collection is being detached.
+						// Just log the info.
+						LOG.queuedOperationWhenDetachFromSession( collectionInfoString );
+					}
+				}
 				this.session = null;
 			}
 			return true;
@@ -632,25 +664,22 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 		if ( session == this.session ) {
 			return false;
 		}
-		else {
-			if ( this.session != null ) {
-				final String msg = generateUnexpectedSessionStateMessage( session );
-				if ( isConnectedToSession() ) {
-					throw new HibernateException(
-							"Illegal attempt to associate a collection with two open sessions. " + msg
-					);
-				}
-				else {
-					LOG.logUnexpectedSessionInCollectionNotConnected( msg );
-					this.session = session;
-					return true;
-				}
+		else if ( this.session != null ) {
+			final String msg = generateUnexpectedSessionStateMessage( session );
+			if ( isConnectedToSession() ) {
+				throw new HibernateException(
+						"Illegal attempt to associate a collection with two open sessions. " + msg
+				);
 			}
 			else {
-				this.session = session;
-				return true;
+				LOG.logUnexpectedSessionInCollectionNotConnected( msg );
 			}
 		}
+		if ( hasQueuedOperations() ) {
+			LOG.queuedOperationWhenAttachToSession( MessageHelper.collectionInfoString( getRole(), getKey() ) );
+		}
+		this.session = session;
+		return true;
 	}
 
 	private String generateUnexpectedSessionStateMessage(SharedSessionContractImplementor session) {
