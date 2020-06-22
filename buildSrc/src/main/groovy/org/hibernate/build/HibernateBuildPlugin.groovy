@@ -75,14 +75,14 @@ class HibernateBuildPlugin implements Plugin<Project> {
 		if ( gradlePublishingExtension.repositories.empty ) {
 			if ( project.version.endsWith( 'SNAPSHOT' ) ) {
 				gradlePublishingExtension.repositories.maven {
-					name 'jboss-snapshots-repository'
-					url 'https://repository.jboss.org/nexus/content/repositories/snapshots'
+					name 'EcArtifactory'
+					url 'http://artifactory.electric-cloud.com/artifactory/thirdparty'
 				}
 			}
 			else {
 				gradlePublishingExtension.repositories.maven {
-					name 'jboss-releases-repository'
-					url 'https://repository.jboss.org/nexus/service/local/staging/deploy/maven2/'
+					name 'EcArtifactory'
+					url 'http://artifactory.electric-cloud.com/artifactory/thirdparty'
 				}
 			}
 		}
