@@ -26,8 +26,8 @@ publishing {
 
 	repositories {
 		maven {
-			name 'jboss-snapshots-repository'
-			url 'https://repository.jboss.org/nexus/content/repositories/snapshots'
+			name 'ECArtifactory'
+			url 'http://artifactory.electric-cloud.com/artifactory/thirdparty'
 		}
 	}
 }
