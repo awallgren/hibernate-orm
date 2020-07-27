@@ -18,6 +18,7 @@ import org.hibernate.engine.jdbc.connections.internal.ConnectionProviderInitiato
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.log.UnsupportedLogger;
 import org.hibernate.internal.util.ConfigHelper;
+import org.hibernate.internal.util.config.ConfigurationException;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 
 import org.jboss.logging.Logger;
@@ -351,17 +352,27 @@ public final class Environment implements AvailableSettings {
 
 		LOG.bytecodeProvider( providerName );
 
-		// there is no need to support plugging in a custom BytecodeProvider via FQCN:
-		// - the static helper methods on this class are deprecated
-		// - it's possible to plug a custom BytecodeProvider directly into the ServiceRegistry
-		//
-		// This also allows integrators to inject a BytecodeProvider instance which has some
-		// state; particularly useful to inject proxy definitions which have been prepared in
-		// advance.
-		// See also https://hibernate.atlassian.net/browse/HHH-13804 and how this was solved in
-		// Quarkus.
+		Class<?> bytecodeProviderClass = null;
+		try {
+			bytecodeProviderClass = Class.forName( providerName );
 
-		LOG.unknownBytecodeProvider( providerName, BYTECODE_PROVIDER_NAME_DEFAULT );
+			if ( BytecodeProvider.class.isAssignableFrom( bytecodeProviderClass ) ) {
+				return (BytecodeProvider) bytecodeProviderClass.newInstance();
+			}
+			else {
+				LOG.bytecodeProviderInvalidClass(providerName);
+			}
+		}
+		catch (ClassNotFoundException e) {
+			LOG.bytecodeProviderClassNotFound(providerName);
+		}
+		catch (InstantiationException | IllegalAccessException e) {
+			LOG.bytecodeProviderInvalidClass(providerName);
+		}
+
+		if ( bytecodeProviderClass == null ) {
+			LOG.unknownBytecodeProvider( providerName, BYTECODE_PROVIDER_NAME_DEFAULT );
+		}
 		return new org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl();
 	}
 }
